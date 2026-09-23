@@ -24,6 +24,7 @@ supabase/functions/      Edge Functions (OAuth, publicacao, refresh de token)
 .github/workflows/       Deploy automatico para o GitHub Pages
 SETUP.md                 Passo a passo de configuracao e etapas de teste
 docs/FACEBOOK.md         Configuracao do Facebook Login for Business e anuncios
+docs/WHATSAPP.md         WhatsApp Cloud API (conexao, webhook, envio, templates)
 ```
 
 ## Pre-requisitos

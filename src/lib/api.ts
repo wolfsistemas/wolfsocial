@@ -17,6 +17,9 @@ import type {
   SocialAccount,
   TeamMember,
   Tenant,
+  WhatsappAccount,
+  WhatsappMessage,
+  WhatsappTemplate,
 } from './types'
 
 const TENANT_COLUMNS =
@@ -713,4 +716,56 @@ export async function acceptInvite(token: string): Promise<string> {
   const { data, error } = await sb.rpc('accept_invite', { invite_token: token })
   if (error) throw error
   return data as string
+}
+
+const WHATSAPP_ACCOUNT_COLUMNS =
+  'id, tenant_id, waba_id, phone_number_id, display_phone, verified_name, status, notify_enabled, alert_phone, last_error, created_at, updated_at'
+
+export async function listWhatsappAccounts(
+  tenantId: string,
+): Promise<WhatsappAccount[]> {
+  const sb = requireSupabase()
+  const { data, error } = await sb
+    .from('whatsapp_accounts')
+    .select(WHATSAPP_ACCOUNT_COLUMNS)
+    .eq('tenant_id', tenantId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as WhatsappAccount[]
+}
+
+export async function removeWhatsappAccount(
+  tenantId: string,
+  accountId: string,
+): Promise<void> {
+  await invokeFunction('whatsapp-connect', {
+    tenantId,
+    accountId,
+    action: 'remove',
+  })
+}
+
+export async function listWhatsappMessages(
+  tenantId: string,
+  limit = 50,
+): Promise<WhatsappMessage[]> {
+  const sb = requireSupabase()
+  const { data, error } = await sb
+    .from('whatsapp_messages')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []) as WhatsappMessage[]
+}
+
+export async function listWhatsappTemplates(
+  tenantId: string,
+): Promise<WhatsappTemplate[]> {
+  const data = await invokeFunction<{ templates: WhatsappTemplate[] }>(
+    'whatsapp-templates',
+    { tenantId },
+  )
+  return data?.templates ?? []
 }

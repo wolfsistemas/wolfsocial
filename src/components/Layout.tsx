@@ -8,6 +8,7 @@ import {
   Images,
   Link2,
   LineChart,
+  MessageCircle,
   Megaphone,
   Settings,
   Users,
@@ -31,6 +32,7 @@ const nav = [
   { to: '/insights', label: 'Insights', icon: LineChart },
   { to: '/links', label: 'Link na bio', icon: Link2 },
   { to: '/team', label: 'Equipe', icon: Users },
+  { to: '/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { to: '/ads', label: 'Anuncios', icon: Megaphone },
   { to: '/settings', label: 'Configuracoes', icon: Settings },
 ]

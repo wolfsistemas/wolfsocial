@@ -175,3 +175,42 @@ export interface AdCampaign {
   daily_budget_cents: number | null
   created_at: string
 }
+
+export type WhatsappStatus = 'connected' | 'error' | 'revoked'
+
+export interface WhatsappAccount {
+  id: string
+  tenant_id: string
+  waba_id: string | null
+  phone_number_id: string
+  display_phone: string | null
+  verified_name: string | null
+  status: WhatsappStatus
+  notify_enabled: boolean
+  alert_phone: string | null
+  last_error: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WhatsappMessage {
+  id: string
+  tenant_id: string
+  account_id: string | null
+  meta_message_id: string | null
+  direction: 'in' | 'out'
+  wa_from: string | null
+  wa_to: string | null
+  kind: string
+  body: string | null
+  status: string | null
+  error: string | null
+  created_at: string
+}
+
+export interface WhatsappTemplate {
+  name: string
+  status: string
+  language: string
+  category?: string
+}

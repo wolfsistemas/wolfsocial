@@ -21,6 +21,7 @@ const Queue = lazy(() => import('./pages/Queue'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Team = lazy(() => import('./pages/Team'))
 const Terms = lazy(() => import('./pages/Terms'))
+const Whatsapp = lazy(() => import('./pages/WhatsApp'))
 
 function Loading() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="insights" element={<Insights />} />
               <Route path="links" element={<Links />} />
               <Route path="team" element={<Team />} />
+              <Route path="whatsapp" element={<Whatsapp />} />
               <Route path="ads" element={<Ads />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
