@@ -210,13 +210,15 @@ export default function Queue() {
                   >
                     Logs
                   </Button>
-                  <Button
-                    variant="ghost"
-                    disabled={busyId === post.id}
-                    onClick={() => navigate(`/composer?edit=${post.id}`)}
-                  >
-                    <Pencil size={15} /> Editar
-                  </Button>
+                  {post.status !== 'published' && post.status !== 'publishing' ? (
+                    <Button
+                      variant="ghost"
+                      disabled={busyId === post.id}
+                      onClick={() => navigate(`/composer?edit=${post.id}`)}
+                    >
+                      <Pencil size={15} /> Editar
+                    </Button>
+                  ) : null}
                   <Button
                     variant="ghost"
                     disabled={busyId === post.id}
