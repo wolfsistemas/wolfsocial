@@ -5,6 +5,7 @@ import {
   ArrowUp,
   CalendarPlus,
   Copy,
+  Crop,
   FileText,
   Save,
   Send,
@@ -22,6 +23,7 @@ import {
   Textarea,
 } from '../components/ui'
 import InstagramPreview from '../components/InstagramPreview'
+import ImageResizer from '../components/ImageResizer'
 import {
   createCaptionTemplate,
   createPost,
@@ -32,6 +34,7 @@ import {
   listCaptionTemplates,
   listMedia,
   updatePost,
+  uploadMedia,
 } from '../lib/api'
 import {
   countHashtags,
@@ -110,6 +113,7 @@ export default function Composer() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [resizeTarget, setResizeTarget] = useState<MediaAsset | null>(null)
 
   const timezone = tenant?.timezone ?? 'America/Sao_Paulo'
 
@@ -213,6 +217,24 @@ export default function Composer() {
     setSelected([])
     setCoverAssetId('')
     setThumbOffsetSec('')
+  }
+
+  async function applyCrop(file: File, presetLabel: string) {
+    if (!tenant) return
+    const asset = await uploadMedia(tenant.id, file)
+    setAssets((prev) => [asset, ...prev])
+    if (kind === 'reels') {
+      setCoverAssetId(asset.id)
+    } else if (rule.max === 1) {
+      setSelected([asset.id])
+    } else {
+      setSelected((current) =>
+        current.length >= rule.max ? current : [...current, asset.id],
+      )
+    }
+    setResizeTarget(null)
+    setError('')
+    setNotice(`Recorte ${presetLabel} aplicado e midia adicionada.`)
   }
 
   function parseCollaborators(): string[] {
@@ -667,33 +689,49 @@ export default function Composer() {
                 {eligible.map((asset) => {
                   const active = selected.includes(asset.id)
                   return (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      onClick={() => toggle(asset.id)}
-                      className={
-                        'relative aspect-square overflow-hidden rounded-lg border-2 transition ' +
-                        (active
-                          ? 'border-violet-500'
-                          : 'border-transparent opacity-80 hover:opacity-100')
-                      }
-                    >
-                      {asset.kind === 'video' ? (
-                        <video
-                          src={asset.public_url}
-                          className="h-full w-full object-cover"
-                          muted
-                          playsInline
-                        />
-                      ) : (
-                        <img src={asset.public_url} alt="" className="h-full w-full object-cover" />
-                      )}
-                      {active ? (
-                        <span className="absolute right-1 top-1 rounded bg-violet-600 px-1 text-[10px] text-white">
-                          {selected.indexOf(asset.id) + 1}
-                        </span>
+                    <div key={asset.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => toggle(asset.id)}
+                        className={
+                          'relative aspect-square w-full overflow-hidden rounded-lg border-2 transition ' +
+                          (active
+                            ? 'border-violet-500'
+                            : 'border-transparent opacity-80 hover:opacity-100')
+                        }
+                      >
+                        {asset.kind === 'video' ? (
+                          <video
+                            src={asset.public_url}
+                            className="h-full w-full object-cover"
+                            muted
+                            playsInline
+                          />
+                        ) : (
+                          <img
+                            src={asset.public_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                        {active ? (
+                          <span className="absolute right-1 top-1 rounded bg-violet-600 px-1 text-[10px] text-white">
+                            {selected.indexOf(asset.id) + 1}
+                          </span>
+                        ) : null}
+                      </button>
+                      {asset.kind === 'image' ? (
+                        <button
+                          type="button"
+                          onClick={() => setResizeTarget(asset)}
+                          aria-label="Redimensionar imagem"
+                          title="Redimensionar / recortar"
+                          className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/70 px-1.5 py-1 text-[10px] text-slate-200 transition hover:bg-violet-600"
+                        >
+                          <Crop size={12} /> Cortar
+                        </button>
                       ) : null}
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -701,6 +739,14 @@ export default function Composer() {
           </Card>
         </div>
       </div>
+
+      {resizeTarget ? (
+        <ImageResizer
+          asset={resizeTarget}
+          onClose={() => setResizeTarget(null)}
+          onApply={applyCrop}
+        />
+      ) : null}
     </div>
   )
 }
