@@ -47,6 +47,8 @@ export async function processPost(postId: string): Promise<void> {
       tenantId: post.tenant_id,
       kind: post.kind as PostKind,
       caption: post.caption,
+      locationId: (post.location_id as string | null) ?? null,
+      collaborators: (post.collaborators as string[] | null) ?? null,
       shareToFeed: post.share_to_feed,
       coverUrl: post.cover_url,
       thumbOffsetMs: post.thumb_offset_ms,

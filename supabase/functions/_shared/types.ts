@@ -13,6 +13,8 @@ export interface PublishContext {
   tenantId: string
   kind: PostKind
   caption: string | null
+  locationId: string | null
+  collaborators: string[] | null
   shareToFeed: boolean
   coverUrl: string | null
   thumbOffsetMs: number | null

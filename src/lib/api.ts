@@ -131,6 +131,11 @@ export interface CreatePostInput {
   mediaIds: string[]
   scheduledAt: string
   altTexts?: string[]
+  shareToFeed?: boolean
+  coverUrl?: string | null
+  thumbOffsetMs?: number | null
+  collaborators?: string[] | null
+  locationId?: string | null
 }
 
 export async function createPost(input: CreatePostInput): Promise<Post> {
@@ -145,6 +150,11 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       scheduled_at: input.scheduledAt,
       status: 'scheduled',
       idempotency_key: crypto.randomUUID(),
+      share_to_feed: input.shareToFeed ?? true,
+      cover_url: input.coverUrl ?? null,
+      thumb_offset_ms: input.thumbOffsetMs ?? null,
+      collaborators: input.collaborators?.length ? input.collaborators : null,
+      location_id: input.locationId || null,
     })
     .select('*')
     .single()
@@ -154,7 +164,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
     post_id: post.id,
     media_asset_id: assetId,
     position: index,
-    alt_text: input.altTexts?.[index] ?? null,
+    alt_text: input.altTexts?.[index]?.trim() || null,
   }))
   const { error: itemErr } = await sb.from('post_items').insert(items)
   if (itemErr) throw itemErr

@@ -103,6 +103,17 @@ function baseParams(token: string): Record<string, string> {
   return { access_token: token }
 }
 
+// Params shared by feed-style containers (image, carousel, reels).
+function feedExtras(ctx: PublishContext): Record<string, string> {
+  return {
+    ...(ctx.caption ? { caption: ctx.caption } : {}),
+    ...(ctx.locationId ? { location_id: ctx.locationId } : {}),
+    ...(ctx.collaborators && ctx.collaborators.length
+      ? { collaborators: JSON.stringify(ctx.collaborators) }
+      : {}),
+  }
+}
+
 async function createSingleContainer(
   ctx: PublishContext,
 ): Promise<string> {
@@ -117,7 +128,7 @@ async function createSingleContainer(
       media_type: 'REELS',
       video_url: item.public_url,
       share_to_feed: String(ctx.shareToFeed),
-      ...(ctx.caption ? { caption: ctx.caption } : {}),
+      ...feedExtras(ctx),
       ...(ctx.coverUrl ? { cover_url: ctx.coverUrl } : {}),
       ...(ctx.thumbOffsetMs ? { thumb_offset: String(ctx.thumbOffsetMs) } : {}),
     })
@@ -138,7 +149,8 @@ async function createSingleContainer(
   const created = await apiPost(base, `${ctx.igUserId}/media`, {
     ...params,
     image_url: item.public_url,
-    ...(ctx.caption ? { caption: ctx.caption } : {}),
+    ...(item.alt_text ? { alt_text: item.alt_text } : {}),
+    ...feedExtras(ctx),
   })
   return String(created.id)
 }
@@ -153,9 +165,9 @@ async function createCarouselContainer(ctx: PublishContext): Promise<string> {
       ...params,
       is_carousel_item: 'true',
       ...(item.kind === 'video'
-        ? { media_type: 'REELS', video_url: item.public_url }
+        ? { media_type: 'VIDEO', video_url: item.public_url }
         : { image_url: item.public_url }),
-      ...(item.alt_text ? { alt_text: item.alt_text } : {}),
+      ...(item.kind === 'image' && item.alt_text ? { alt_text: item.alt_text } : {}),
     })
     children.push(String(created.id))
   }
@@ -164,7 +176,7 @@ async function createCarouselContainer(ctx: PublishContext): Promise<string> {
     ...params,
     media_type: 'CAROUSEL',
     children: children.join(','),
-    ...(ctx.caption ? { caption: ctx.caption } : {}),
+    ...feedExtras(ctx),
   })
   return String(parent.id)
 }

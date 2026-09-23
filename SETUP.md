@@ -97,8 +97,10 @@ O app e do tipo **Business** e usa dois produtos:
 
 1. Em **Midias**, envie uma imagem JPEG.
 2. Em **Novo post**, formato **Imagem**, selecione a midia, escreva a legenda.
-3. Clique em **Publicar agora**. Confira no Instagram.
-4. **Teste de agendamento:** crie um post para daqui a alguns minutos, com
+3. Opcional: preencha **Alt text** (acessibilidade) e **Colaboradores**
+   (`@fulano, @beltrano`).
+4. Clique em **Publicar agora**. Confira no Instagram.
+5. **Teste de agendamento:** crie um post para daqui a alguns minutos, com
    status *Agendado*.
 
 ---
@@ -122,9 +124,13 @@ O agendamento real precisa de um cron externo chamando `publish-due`.
 
 1. Envie um video MP4 vertical (9:16).
 2. **Novo post > Reels**, selecione o video, legenda e publique.
-3. Videos levam de segundos a minutos para processar. Se ainda nao estiver
+3. Opcoes de Reels:
+   - **Compartilhar tambem no feed** (ligado por padrao).
+   - **Capa**: escolha uma imagem da biblioteca ou use o frame do video.
+   - **Segundo da capa**: alternativo a capa, ex.: `1.5`.
+4. Videos levam de segundos a minutos para processar. Se ainda nao estiver
    pronto, o post fica *Publicando* e o worker conclui na proxima passada.
-4. **Limitacao:** a API so aceita audio original. Musica licenciada (trending)
+5. **Limitacao:** a API so aceita audio original. Musica licenciada (trending)
    nao e suportada.
 
 ---
@@ -132,7 +138,9 @@ O agendamento real precisa de um cron externo chamando `publish-due`.
 ## Etapa 7 - Carrossel
 
 1. Envie de 2 a 10 imagens/videos.
-2. **Novo post > Carrossel**, selecione na ordem desejada e publique.
+2. **Novo post > Carrossel**, selecione as midias. A ordem de selecao define a
+   sequencia; use as **setas** para reordenar (a primeira e a capa).
+3. Opcional: **Alt text** por item e **Colaboradores**.
 
 ---
 

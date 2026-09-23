@@ -1,17 +1,37 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarPlus, Send } from 'lucide-react'
-import { Button, Card, EmptyState, ErrorText, Field, PageHeader, Select, Textarea } from '../components/ui'
+import { ArrowDown, ArrowUp, CalendarPlus, Send } from 'lucide-react'
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorText,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Textarea,
+} from '../components/ui'
 import { createPost, invokeFunction, listAccounts, listMedia } from '../lib/api'
 import { formatDateInput } from '../lib/format'
 import { useSession } from '../lib/session'
 import type { MediaAsset, PostKind, SocialAccount } from '../lib/types'
 
-const kindRules: Record<PostKind, { min: number; max: number; media: 'image' | 'video' | 'any' }> = {
-  image: { min: 1, max: 1, media: 'image' },
-  carousel: { min: 2, max: 10, media: 'any' },
-  reels: { min: 1, max: 1, media: 'video' },
-  story: { min: 1, max: 1, media: 'any' },
+const kindRules: Record<
+  PostKind,
+  { min: number; max: number; media: 'image' | 'video' | 'any'; caption: boolean }
+> = {
+  image: { min: 1, max: 1, media: 'image', caption: true },
+  carousel: { min: 2, max: 10, media: 'any', caption: true },
+  reels: { min: 1, max: 1, media: 'video', caption: true },
+  story: { min: 1, max: 1, media: 'any', caption: false },
+}
+
+const KIND_HINT: Record<PostKind, string> = {
+  image: 'Feed de imagem. Use JPEG; o Instagram recorta para ate 4:5.',
+  carousel: 'De 2 a 10 itens. A primeira midia e a capa; use as setas para ordenar.',
+  reels: 'Video vertical 9:16 (MP4). Aceita capa, segundo da capa e legenda.',
+  story: 'Story some em 24h. Nao aceita legenda, stickers, enquetes nem links.',
 }
 
 const DEFAULT_SCHEDULE = formatDateInput(new Date(Date.now() + 3600_000))
@@ -25,6 +45,11 @@ export default function Composer() {
   const [kind, setKind] = useState<PostKind>('image')
   const [selected, setSelected] = useState<string[]>([])
   const [caption, setCaption] = useState('')
+  const [altMap, setAltMap] = useState<Record<string, string>>({})
+  const [collaborators, setCollaborators] = useState('')
+  const [shareToFeed, setShareToFeed] = useState(true)
+  const [coverAssetId, setCoverAssetId] = useState('')
+  const [thumbOffsetSec, setThumbOffsetSec] = useState('')
   const [scheduledAt, setScheduledAt] = useState(DEFAULT_SCHEDULE)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -48,12 +73,10 @@ export default function Composer() {
 
   const rule = kindRules[kind]
   const eligible = useMemo(
-    () =>
-      assets.filter((a) =>
-        rule.media === 'any' ? true : a.kind === rule.media,
-      ),
+    () => assets.filter((a) => (rule.media === 'any' ? true : a.kind === rule.media)),
     [assets, rule.media],
   )
+  const imageAssets = useMemo(() => assets.filter((a) => a.kind === 'image'), [assets])
 
   function toggle(assetId: string) {
     setSelected((current) => {
@@ -65,9 +88,28 @@ export default function Composer() {
     })
   }
 
+  function move(index: number, dir: -1 | 1) {
+    setSelected((current) => {
+      const target = index + dir
+      if (target < 0 || target >= current.length) return current
+      const next = [...current]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+
   function changeKind(next: PostKind) {
     setKind(next)
     setSelected([])
+    setCoverAssetId('')
+    setThumbOffsetSec('')
+  }
+
+  function parseCollaborators(): string[] {
+    return collaborators
+      .split(',')
+      .map((s) => s.trim().replace(/^@/, ''))
+      .filter(Boolean)
   }
 
   function validate(): string | null {
@@ -75,8 +117,12 @@ export default function Composer() {
     if (selected.length < rule.min || selected.length > rule.max) {
       return `Este formato exige de ${rule.min} a ${rule.max} midia(s).`
     }
-    if (kind !== 'story' && !caption.trim()) {
+    if (rule.caption && !caption.trim()) {
       return 'Escreva uma legenda.'
+    }
+    if (kind === 'reels' && thumbOffsetSec) {
+      const value = Number(thumbOffsetSec)
+      if (Number.isNaN(value) || value < 0) return 'Segundo da capa invalido.'
     }
     return null
   }
@@ -92,6 +138,8 @@ export default function Composer() {
     setError('')
     setNotice('')
     try {
+      const coverAsset = assets.find((a) => a.id === coverAssetId)
+      const offset = thumbOffsetSec ? Math.round(Number(thumbOffsetSec) * 1000) : null
       const post = await createPost({
         tenantId: tenant.id,
         accountId,
@@ -99,6 +147,11 @@ export default function Composer() {
         caption,
         mediaIds: selected,
         scheduledAt: now ? new Date().toISOString() : new Date(scheduledAt).toISOString(),
+        altTexts: selected.map((id) => altMap[id] ?? ''),
+        shareToFeed,
+        coverUrl: kind === 'reels' ? coverAsset?.public_url ?? null : null,
+        thumbOffsetMs: kind === 'reels' ? offset : null,
+        collaborators: parseCollaborators(),
       })
       if (now) {
         await invokeFunction('publish-post', { postId: post.id })
@@ -148,7 +201,7 @@ export default function Composer() {
               ))}
             </Select>
           </Field>
-          <Field label="Formato">
+          <Field label="Formato" hint={KIND_HINT[kind]}>
             <Select value={kind} onChange={(e) => changeKind(e.target.value as PostKind)}>
               <option value="image">Imagem (feed)</option>
               <option value="carousel">Carrossel (2 a 10)</option>
@@ -156,11 +209,9 @@ export default function Composer() {
               <option value="story">Story (limitado)</option>
             </Select>
           </Field>
-          {kind !== 'story' ? (
-            <Field
-              label="Legenda"
-              hint={kind === 'reels' ? 'Reels aceitam legenda normalmente.' : undefined}
-            >
+
+          {rule.caption ? (
+            <Field label="Legenda">
               <Textarea
                 rows={5}
                 value={caption}
@@ -173,6 +224,107 @@ export default function Composer() {
               Stories via API nao aceitam legenda, stickers, enquetes nem links.
             </p>
           )}
+
+          {selected.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-300">
+                {kind === 'carousel' ? 'Ordem e alt text' : 'Alt text (opcional)'}
+              </p>
+              {selected.map((id, index) => {
+                const asset = assets.find((a) => a.id === id)
+                return (
+                  <div key={id} className="flex items-center gap-2">
+                    {asset ? (
+                      <img
+                        src={asset.public_url}
+                        alt=""
+                        className="h-10 w-10 shrink-0 rounded object-cover"
+                      />
+                    ) : null}
+                    <Input
+                      value={altMap[id] ?? ''}
+                      onChange={(e) =>
+                        setAltMap((m) => ({ ...m, [id]: e.target.value }))
+                      }
+                      placeholder="Descricao para acessibilidade (opcional)"
+                    />
+                    {kind === 'carousel' ? (
+                      <div className="flex shrink-0 flex-col">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => move(index, -1)}
+                          className="rounded p-1 text-slate-400 hover:bg-white/10 disabled:opacity-30"
+                          aria-label="Mover para cima"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === selected.length - 1}
+                          onClick={() => move(index, 1)}
+                          className="rounded p-1 text-slate-400 hover:bg-white/10 disabled:opacity-30"
+                          aria-label="Mover para baixo"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+
+          {kind === 'reels' ? (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-black/20 p-3">
+              <p className="text-sm font-medium text-slate-300">Opcoes de Reels</p>
+              <label className="flex items-center gap-2 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={shareToFeed}
+                  onChange={(e) => setShareToFeed(e.target.checked)}
+                  className="h-4 w-4 accent-violet-500"
+                />
+                Compartilhar tambem no feed
+              </label>
+              <Field label="Capa (opcional)">
+                <Select
+                  value={coverAssetId}
+                  onChange={(e) => setCoverAssetId(e.target.value)}
+                >
+                  <option value="">Usar frame do video</option>
+                  {imageAssets.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.storage_path.split('/').pop() ?? a.id}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Segundo da capa (opcional)" hint="Ex.: 1.5 (ignora se escolher uma capa).">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={thumbOffsetSec}
+                  onChange={(e) => setThumbOffsetSec(e.target.value)}
+                  placeholder="0"
+                />
+              </Field>
+            </div>
+          ) : null}
+
+          <Field
+            label="Colaboradores (opcional)"
+            hint="Usuarios do Instagram separados por virgula. Ex.: fulano, beltrano"
+          >
+            <Input
+              value={collaborators}
+              onChange={(e) => setCollaborators(e.target.value)}
+              placeholder="@fulano, @beltrano"
+            />
+          </Field>
+
           <Field label="Agendar para">
             <input
               type="datetime-local"
@@ -218,11 +370,18 @@ export default function Composer() {
                     onClick={() => toggle(asset.id)}
                     className={
                       'relative aspect-square overflow-hidden rounded-lg border-2 transition ' +
-                      (active ? 'border-violet-500' : 'border-transparent opacity-80 hover:opacity-100')
+                      (active
+                        ? 'border-violet-500'
+                        : 'border-transparent opacity-80 hover:opacity-100')
                     }
                   >
                     {asset.kind === 'video' ? (
-                      <video src={asset.public_url} className="h-full w-full object-cover" muted />
+                      <video
+                        src={asset.public_url}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                      />
                     ) : (
                       <img src={asset.public_url} alt="" className="h-full w-full object-cover" />
                     )}
