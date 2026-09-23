@@ -229,3 +229,90 @@ export function readError(payload: unknown): string {
   }
   return JSON.stringify(payload)
 }
+
+export interface MediaInsights {
+  impressions: number | null
+  reach: number | null
+  likes: number | null
+  comments: number | null
+  saves: number | null
+  shares: number | null
+}
+
+const INSIGHT_METRICS = ['reach', 'likes', 'comments', 'saved', 'shares', 'impressions']
+
+function pickValue(data: unknown, metric: string): number | null {
+  if (!data || typeof data !== 'object') return null
+  const list = (data as { data?: unknown }).data
+  if (!Array.isArray(list)) return null
+  for (const entry of list) {
+    if (!entry || typeof entry !== 'object') continue
+    const row = entry as Record<string, unknown>
+    if (row.name !== metric) continue
+    const values = row.values
+    if (Array.isArray(values) && values.length > 0) {
+      const last = values[values.length - 1] as Record<string, unknown>
+      const v = last?.value
+      if (typeof v === 'number') return v
+      if (typeof v === 'string' && v !== '') return Number(v)
+    }
+    if (typeof row.value === 'number') return row.value
+  }
+  return null
+}
+
+// Reads lifetime insights for a published media. Tries the batch endpoint and
+// falls back to per-metric calls so a single unsupported metric does not fail
+// the whole sync.
+export async function fetchMediaInsights(
+  authPath: AuthPath,
+  mediaId: string,
+  accessToken: string,
+): Promise<MediaInsights> {
+  const base = graphBase(authPath)
+  const empty: MediaInsights = {
+    impressions: null,
+    reach: null,
+    likes: null,
+    comments: null,
+    saves: null,
+    shares: null,
+  }
+
+  const batchUrl = `${base}/${mediaId}/insights?${new URLSearchParams({
+    metric: INSIGHT_METRICS.join(','),
+    access_token: accessToken,
+  })}`
+  const batchRes = await fetch(batchUrl)
+  const batchJson = await batchRes.json()
+  if (batchRes.ok) {
+    return {
+      impressions: pickValue(batchJson, 'impressions'),
+      reach: pickValue(batchJson, 'reach'),
+      likes: pickValue(batchJson, 'likes'),
+      comments: pickValue(batchJson, 'comments'),
+      saves: pickValue(batchJson, 'saved'),
+      shares: pickValue(batchJson, 'shares'),
+    }
+  }
+
+  const result = { ...empty }
+  for (const metric of INSIGHT_METRICS) {
+    try {
+      const res = await fetch(
+        `${base}/${mediaId}/insights?${new URLSearchParams({
+          metric,
+          access_token: accessToken,
+        })}`,
+      )
+      if (!res.ok) continue
+      const json = await res.json()
+      const value = pickValue(json, metric)
+      if (metric === 'saved') result.saves = value
+      else (result as Record<string, number | null>)[metric] = value
+    } catch {
+      // ignore individual metric failures
+    }
+  }
+  return result
+}

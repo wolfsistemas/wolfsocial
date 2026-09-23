@@ -14,6 +14,71 @@ export interface Tenant {
   id: string
   name: string
   slug: string
+  timezone: string
+  alert_webhook_url: string | null
+  daily_publish_limit: number
+  created_at: string
+}
+
+export type MemberRole = 'owner' | 'admin' | 'editor' | 'viewer'
+
+export interface CaptionTemplate {
+  id: string
+  tenant_id: string
+  name: string
+  body: string
+  hashtags: string
+  kind: PostKind | null
+  created_at: string
+}
+
+export interface AppNotification {
+  id: string
+  tenant_id: string
+  level: 'info' | 'warn' | 'error'
+  title: string
+  message: string | null
+  read: boolean
+  created_at: string
+}
+
+export interface PostInsight {
+  post_id: string
+  tenant_id: string
+  impressions: number | null
+  reach: number | null
+  likes: number | null
+  comments: number | null
+  saves: number | null
+  shares: number | null
+  fetched_at: string
+}
+
+export interface BioLink {
+  id: string
+  tenant_id: string
+  label: string
+  url: string
+  position: number
+  clicks: number
+  created_at: string
+}
+
+export interface Invite {
+  id: string
+  tenant_id: string
+  email: string
+  role: MemberRole
+  token: string
+  revoked_at: string | null
+  accepted_at: string | null
+  created_at: string
+}
+
+export interface TeamMember {
+  user_id: string
+  email: string
+  role: MemberRole
   created_at: string
 }
 

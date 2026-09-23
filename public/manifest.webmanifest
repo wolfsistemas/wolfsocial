@@ -1,0 +1,19 @@
+{
+  "name": "WolfSocial",
+  "short_name": "WolfSocial",
+  "description": "Agendamento e publicacao de conteudo no Instagram para os SaaS da Wolfsistemas.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1119",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -2,11 +2,15 @@ import { useState } from 'react'
 import {
   BarChart3,
   CalendarClock,
+  CalendarDays,
   Home,
   AtSign,
   Images,
+  Link2,
+  LineChart,
   Megaphone,
   Settings,
+  Users,
   LogOut,
   PlusSquare,
   Menu,
@@ -14,6 +18,7 @@ import {
 } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { clsx } from 'clsx'
+import NotificationsBell from './NotificationsBell'
 import { useSession } from '../lib/session'
 
 const nav = [
@@ -21,7 +26,11 @@ const nav = [
   { to: '/accounts', label: 'Contas', icon: AtSign },
   { to: '/media', label: 'Midias', icon: Images },
   { to: '/composer', label: 'Novo post', icon: PlusSquare },
+  { to: '/calendar', label: 'Calendario', icon: CalendarDays },
   { to: '/queue', label: 'Fila', icon: CalendarClock },
+  { to: '/insights', label: 'Insights', icon: LineChart },
+  { to: '/links', label: 'Link na bio', icon: Link2 },
+  { to: '/team', label: 'Equipe', icon: Users },
   { to: '/ads', label: 'Anuncios', icon: Megaphone },
   { to: '/settings', label: 'Configuracoes', icon: Settings },
 ]
@@ -97,6 +106,7 @@ export default function Layout() {
           <BarChart3 className="text-violet-400" size={20} />
           <span className="font-semibold text-white">WolfSocial</span>
         </div>
+        <NotificationsBell />
       </header>
 
       {open ? (
@@ -127,8 +137,9 @@ export default function Layout() {
       ) : null}
 
       <aside className="hidden w-60 shrink-0 flex-col border-r border-white/10 bg-[#0d1119] p-4 md:flex">
-        <div className="mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <Brand />
+          <NotificationsBell />
         </div>
         <NavLinks />
         <AccountFooter />

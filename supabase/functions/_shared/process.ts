@@ -1,4 +1,4 @@
-import { adminClient, log } from './db.ts'
+import { adminClient, log, notify } from './db.ts'
 import { decryptToken } from './crypto.ts'
 import { runPublish } from './publish.ts'
 import type { PublishContext, PostKind } from './types.ts'
@@ -122,6 +122,15 @@ async function handleError(
     `Falha na publicacao: ${message}`,
     { attempts, backoffMinutes, terminal },
   )
+
+  if (failed) {
+    await notify(
+      post.tenant_id as string,
+      'error',
+      'Falha ao publicar',
+      `O post ${post.id} falhou apos ${attempts} tentativa(s): ${message}`,
+    )
+  }
 }
 
 async function fail(
@@ -134,4 +143,5 @@ async function fail(
     post.id as string,
   )
   await log(post.id as string, post.tenant_id as string, 'error', message)
+  await notify(post.tenant_id as string, 'error', 'Falha ao publicar', message)
 }

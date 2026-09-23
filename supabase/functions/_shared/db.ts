@@ -43,3 +43,41 @@ export async function log(
     // logging must never break the publish flow
   }
 }
+
+// Creates an in-app notification and, when configured, forwards it to the
+// tenant's alert webhook. Never throws.
+export async function notify(
+  tenantId: string,
+  level: 'info' | 'warn' | 'error',
+  title: string,
+  message?: string,
+): Promise<void> {
+  const sb = adminClient()
+  try {
+    await sb.from('notifications').insert({
+      tenant_id: tenantId,
+      level,
+      title,
+      message: message ?? null,
+    })
+  } catch {
+    // ignore
+  }
+  try {
+    const { data } = await sb
+      .from('tenants')
+      .select('alert_webhook_url')
+      .eq('id', tenantId)
+      .single()
+    const url = data?.alert_webhook_url as string | null
+    if (url) {
+      await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level, title, message: message ?? null, tenantId }),
+      })
+    }
+  } catch {
+    // webhook is best effort
+  }
+}

@@ -1,36 +1,76 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { RefreshCw, Send, XCircle } from 'lucide-react'
-import { Button, Card, EmptyState, ErrorText, Modal, PageHeader, Select, StatusBadge } from '../components/ui'
-import { invokeFunction, listLogs, listPosts, retryPost, setPostStatus } from '../lib/api'
+import { Link, useNavigate } from 'react-router-dom'
+import { Copy, Pencil, RefreshCw, Send, XCircle } from 'lucide-react'
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorText,
+  Modal,
+  PageHeader,
+  Select,
+  StatusBadge,
+} from '../components/ui'
+import {
+  duplicatePost,
+  invokeFunction,
+  listAccounts,
+  listLogs,
+  listPosts,
+  retryPost,
+  setPostStatus,
+} from '../lib/api'
 import { formatDateTime, POST_KIND_LABEL, POST_STATUS_LABEL } from '../lib/format'
 import { useSession } from '../lib/session'
-import type { PostWithItems, PublishLog } from '../lib/types'
+import type { PostWithItems, PublishLog, SocialAccount } from '../lib/types'
+
+const PAGE_SIZE = 15
 
 export default function Queue() {
   const { tenant } = useSession()
+  const navigate = useNavigate()
   const [posts, setPosts] = useState<PostWithItems[]>([])
+  const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [filter, setFilter] = useState('all')
+  const [accountFilter, setAccountFilter] = useState('')
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [logsFor, setLogsFor] = useState<PostWithItems | null>(null)
   const [logs, setLogs] = useState<PublishLog[]>([])
   const [busyId, setBusyId] = useState('')
 
-  async function load() {
+  const timezone = tenant?.timezone ?? undefined
+  const ascending = !['published', 'failed', 'canceled'].includes(filter)
+
+  async function load(reset = true) {
     if (!tenant) return
     try {
-      setPosts(await listPosts(tenant.id))
+      const offset = reset ? 0 : posts.length
+      const [page, acc] = await Promise.all([
+        listPosts(tenant.id, {
+          status: filter === 'all' ? 'all' : (filter as never),
+          accountId: accountFilter || undefined,
+          limit: PAGE_SIZE,
+          offset,
+          ascending,
+        }),
+        reset ? listAccounts(tenant.id) : Promise.resolve(accounts),
+      ])
+      setPosts(reset ? page : [...posts, ...page])
+      setHasMore(page.length === PAGE_SIZE)
+      if (reset) setAccounts(acc)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao carregar fila')
     }
   }
 
   useEffect(() => {
-    void load()
-    const timer = window.setInterval(() => void load(), 30_000)
+    void load(true)
+    const timer = window.setInterval(() => void load(true), 30_000)
     return () => window.clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenant])
+  }, [tenant, filter, accountFilter])
 
   async function act(post: PostWithItems, action: 'now' | 'retry' | 'cancel') {
     setBusyId(post.id)
@@ -44,9 +84,23 @@ export default function Queue() {
       } else {
         await setPostStatus(post.id, 'canceled')
       }
-      await load()
+      await load(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Acao falhou')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  async function duplicate(post: PostWithItems) {
+    setBusyId(post.id)
+    setError('')
+    try {
+      await duplicatePost(post)
+      setNotice('Post duplicado como rascunho.')
+      await load(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao duplicar')
     } finally {
       setBusyId('')
     }
@@ -61,36 +115,58 @@ export default function Queue() {
     }
   }
 
-  const visible = posts.filter((p) => filter === 'all' || p.status === filter)
+  const accountName = (id: string) =>
+    accounts.find((a) => a.id === id)?.username ?? ''
 
   return (
     <div>
       <PageHeader
         title="Fila"
-        description="Acompanhe, publique agora, repita ou cancele."
+        description="Acompanhe, publique agora, edite, duplique ou cancele."
         actions={
-          <Button variant="ghost" onClick={() => void load()}>
+          <Button variant="ghost" onClick={() => void load(true)}>
             <RefreshCw size={15} /> Atualizar
           </Button>
         }
       />
       <ErrorText>{error}</ErrorText>
+      {notice ? (
+        <p className="my-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+          {notice}
+        </p>
+      ) : null}
 
-      <div className="my-4 max-w-xs">
-        <Select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="all">Todos</option>
-          <option value="scheduled">Agendados</option>
-          <option value="publishing">Publicando</option>
-          <option value="published">Publicados</option>
-          <option value="failed">Falhas</option>
-          <option value="canceled">Cancelados</option>
-        </Select>
+      <div className="my-4 flex flex-wrap gap-3">
+        <div className="w-full max-w-xs">
+          <Select value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="all">Todos</option>
+            <option value="draft">Rascunhos</option>
+            <option value="scheduled">Agendados</option>
+            <option value="publishing">Publicando</option>
+            <option value="published">Publicados</option>
+            <option value="failed">Falhas</option>
+            <option value="canceled">Cancelados</option>
+          </Select>
+        </div>
+        <div className="w-full max-w-xs">
+          <Select
+            value={accountFilter}
+            onChange={(e) => setAccountFilter(e.target.value)}
+          >
+            <option value="">Todas as contas</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                @{a.username ?? a.ig_user_id}
+              </option>
+            ))}
+          </Select>
+        </div>
       </div>
 
-      {visible.length === 0 ? (
+      {posts.length === 0 ? (
         <EmptyState
-          title="Fila vazia"
-          description="Crie um post para ele aparecer aqui."
+          title="Nada por aqui"
+          description="Crie um post para ele aparecer na fila."
           action={
             <Link to="/composer" className="mt-2 text-sm text-violet-300 hover:text-violet-200">
               Criar post
@@ -99,21 +175,27 @@ export default function Queue() {
         />
       ) : (
         <div className="space-y-3">
-          {visible.map((post) => (
+          {posts.map((post) => (
             <Card key={post.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium text-slate-100">
                       {POST_KIND_LABEL[post.kind]}
                     </p>
                     <StatusBadge status={post.status} label={POST_STATUS_LABEL[post.status]} />
+                    {accountName(post.account_id) ? (
+                      <span className="text-xs text-slate-500">
+                        @{accountName(post.account_id)}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm text-slate-400">
                     {post.caption || 'sem legenda'}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {formatDateTime(post.scheduled_at)} · {post.post_items.length} midia(s)
+                    {formatDateTime(post.scheduled_at, timezone)} ·{' '}
+                    {post.post_items.length} midia(s)
                     {post.attempts > 0 ? ` · ${post.attempts} tentativa(s)` : ''}
                   </p>
                   {post.last_error ? (
@@ -127,6 +209,20 @@ export default function Queue() {
                     onClick={() => void openLogs(post)}
                   >
                     Logs
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={busyId === post.id}
+                    onClick={() => navigate(`/composer?edit=${post.id}`)}
+                  >
+                    <Pencil size={15} /> Editar
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    disabled={busyId === post.id}
+                    onClick={() => void duplicate(post)}
+                  >
+                    <Copy size={15} /> Duplicar
                   </Button>
                   {post.status !== 'published' && post.status !== 'publishing' ? (
                     <Button
@@ -159,6 +255,14 @@ export default function Queue() {
               </div>
             </Card>
           ))}
+
+          {hasMore ? (
+            <div className="flex justify-center pt-2">
+              <Button variant="ghost" onClick={() => void load(false)}>
+                Carregar mais
+              </Button>
+            </div>
+          ) : null}
         </div>
       )}
 
@@ -171,7 +275,7 @@ export default function Queue() {
               {logs.map((log) => (
                 <li key={log.id} className="rounded-lg bg-black/30 p-2">
                   <p className="text-xs text-slate-500">
-                    {formatDateTime(log.created_at)} · {log.level}
+                    {formatDateTime(log.created_at, timezone)} · {log.level}
                   </p>
                   <p className="text-slate-200">{log.message}</p>
                 </li>

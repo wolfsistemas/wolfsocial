@@ -1,0 +1,59 @@
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Button, Card, ErrorText, PageHeader } from '../components/ui'
+import { acceptInvite } from '../lib/api'
+import { useSession } from '../lib/session'
+import Login from './Login'
+
+export default function Join() {
+  const { session, refreshTenant } = useSession()
+  const [params] = useSearchParams()
+  const navigate = useNavigate()
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const attempted = useRef(false)
+  const token = params.get('token') ?? ''
+
+  useEffect(() => {
+    if (!session || !token || attempted.current) return
+    attempted.current = true
+    acceptInvite(token)
+      .then(async () => {
+        setNotice('Convite aceito. Bem-vindo ao espaco!')
+        await refreshTenant()
+        window.setTimeout(() => navigate('/'), 1200)
+      })
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : 'Falha ao aceitar convite'),
+      )
+  }, [session, token, refreshTenant, navigate])
+
+  if (!session) {
+    return (
+      <div>
+        <div className="mx-auto max-w-md px-4 pt-8">
+          <Card>
+            <p className="text-sm text-slate-300">
+              Entre com o email que recebeu o convite para aceita-lo.
+            </p>
+          </Card>
+        </div>
+        <Login />
+      </div>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-md px-4 py-10">
+      <PageHeader title="Aceitar convite" />
+      {!token ? <ErrorText>Convite sem token.</ErrorText> : null}
+      <ErrorText>{error}</ErrorText>
+      {notice ? (
+        <p className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+          {notice}
+        </p>
+      ) : null}
+      <Button onClick={() => navigate('/')}>Ir para o painel</Button>
+    </div>
+  )
+}
