@@ -181,14 +181,20 @@ export default function WhatsApp() {
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Phone Number ID" hint="WhatsApp > API Setup">
+          <Field
+            label="Phone Number ID"
+            hint="Painel do app > WhatsApp > API Setup (numero 'From')."
+          >
             <Input
               value={phoneNumberId}
               onChange={(e) => setPhoneNumberId(e.target.value)}
               placeholder="123456789012345"
             />
           </Field>
-          <Field label="WABA ID" hint="Necessario para listar templates.">
+          <Field
+            label="WABA ID (Messaging account ID)"
+            hint="No API Setup aparece como 'Messaging account ID'."
+          >
             <Input
               value={wabaId}
               onChange={(e) => setWabaId(e.target.value)}
@@ -197,7 +203,7 @@ export default function WhatsApp() {
           </Field>
           <Field
             label="Access token"
-            hint="Temporario (24h) para teste; use um System User para producao."
+            hint="Botao 'Generate access token' (24h) para teste; System User para producao."
           >
             <Input
               type="password"
