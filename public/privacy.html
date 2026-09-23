@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Politica de Privacidade - WolfSocial</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        background: #0b0e14;
+        color: #e6e8ee;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.6;
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+      h1 { font-size: 1.6rem; }
+      h2 { font-size: 1.05rem; margin-top: 28px; }
+      p, li { color: #cbd2e0; font-size: 0.95rem; }
+      a { color: #c4b5fd; }
+      footer { margin-top: 48px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; display: flex; gap: 16px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="/wolfsocial/">WolfSocial</a></p>
+      <h1>Politica de Privacidade</h1>
+      <p>
+        O WolfSocial e uma ferramenta de agendamento e publicacao de conteudo no
+        Instagram, operada pela Wolfsistemas. Esta politica descreve como
+        tratamos os dados ao usar a aplicacao.
+      </p>
+
+      <h2>Dados que coletamos</h2>
+      <ul>
+        <li>Email e senha (armazenada apenas como hash pelo Supabase Auth).</li>
+        <li>Tokens de acesso do Instagram/Facebook, criptografados em repouso (AES-256-GCM).</li>
+        <li>Conteudo que voce envia: imagens, videos, legendas, agendamentos e registros de publicacao.</li>
+        <li>Metricas dos posts publicados (alcance, curtidas, comentarios, etc.).</li>
+      </ul>
+
+      <h2>Como usamos</h2>
+      <p>
+        Usamos os dados exclusivamente para operar a ferramenta: autenticar voce,
+        publicar conteudo na sua conta do Instagram e exibir relatorios. Nao
+        vendemos nem compartilhamos seus dados com terceiros, exceto com a Meta
+        quando necessario para publicar via API oficial.
+      </p>
+
+      <h2>Armazenamento</h2>
+      <p>
+        Os dados ficam hospedados no Supabase. As midias ficam em um bucket
+        publico apenas para que a API do Instagram possa busca-las no momento da
+        publicacao.
+      </p>
+
+      <h2>Seus direitos</h2>
+      <p>
+        Voce pode solicitar a exclusao dos seus dados na pagina de
+        <a href="/wolfsocial/data-deletion.html">exclusao de dados</a>. Para
+        duvidas, entre em contato pelo email
+        <a href="mailto:contato@wolfsaas.com.br">contato@wolfsaas.com.br</a>.
+      </p>
+
+      <footer>
+        <a href="/wolfsocial/privacy.html">Privacidade</a>
+        <a href="/wolfsocial/terms.html">Termos</a>
+        <a href="/wolfsocial/data-deletion.html">Exclusao de dados</a>
+      </footer>
+    </main>
+  </body>
+</html>

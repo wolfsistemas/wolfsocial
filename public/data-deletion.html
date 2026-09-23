@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Exclusao de dados - WolfSocial</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        background: #0b0e14;
+        color: #e6e8ee;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        line-height: 1.6;
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+      h1 { font-size: 1.6rem; }
+      h2 { font-size: 1.05rem; margin-top: 28px; }
+      p, li { color: #cbd2e0; font-size: 0.95rem; }
+      a { color: #c4b5fd; }
+      form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+      input {
+        flex: 1 1 240px;
+        min-width: 0;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        color: #e6e8ee;
+        padding: 10px 12px;
+        font-size: 0.9rem;
+      }
+      button {
+        background: #7c3aed;
+        border: 0;
+        border-radius: 8px;
+        color: #fff;
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      #result { margin-top: 14px; font-size: 0.9rem; }
+      footer { margin-top: 48px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; display: flex; gap: 16px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="/wolfsocial/">WolfSocial</a></p>
+      <h1>Exclusao de dados</h1>
+      <p>
+        Esta pagina atende ao callback de exclusao de dados da Meta. Requisicoes
+        recebidas pelo Instagram/Facebook sao registradas com um codigo de
+        confirmacao, que pode ser consultado abaixo.
+      </p>
+
+      <h2>Consultar um pedido</h2>
+      <form id="lookup">
+        <input id="code" placeholder="Codigo de confirmacao (ex.: 0f1e2d3c-...)" />
+        <button type="submit">Consultar</button>
+      </form>
+      <div id="result"></div>
+
+      <h2>Como excluir seus dados</h2>
+      <ul>
+        <li>
+          Remova o acesso do WolfSocial nas configuracoes do seu Instagram
+          (Central de contas &gt; Apps e sites).
+        </li>
+        <li>
+          Envie um pedido de exclusao para
+          <a href="mailto:contato@wolfsaas.com.br">contato@wolfsaas.com.br</a>.
+        </li>
+      </ul>
+      <p>
+        Excluiremos tokens de acesso, midias e registros associados ao seu
+        espaco. Confirmamos a exclusao pelo mesmo email.
+      </p>
+
+      <footer>
+        <a href="/wolfsocial/privacy.html">Privacidade</a>
+        <a href="/wolfsocial/terms.html">Termos</a>
+        <a href="/wolfsocial/data-deletion.html">Exclusao de dados</a>
+      </footer>
+    </main>
+    <script>
+      var SUPABASE_URL = 'https://rjyaqrbzsmbcxgcqivxa.supabase.co';
+      var result = document.getElementById('result');
+      function lookup(value) {
+        if (!value) return;
+        result.textContent = 'Consultando...';
+        fetch(SUPABASE_URL + '/functions/v1/data-deletion?code=' + encodeURIComponent(value))
+          .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+          .then(function (r) {
+            if (!r.ok) { result.textContent = 'Nao encontrado: ' + (r.d.error || 'erro'); return; }
+            result.textContent = 'Status: ' + r.d.status + ' | recebido em ' + new Date(r.d.created_at).toLocaleString('pt-BR');
+          })
+          .catch(function () { result.textContent = 'Falha na consulta.'; });
+      }
+      var params = new URLSearchParams(window.location.search);
+      var initial = params.get('code');
+      if (initial) { document.getElementById('code').value = initial; lookup(initial); }
+      document.getElementById('lookup').addEventListener('submit', function (e) {
+        e.preventDefault();
+        lookup(document.getElementById('code').value.trim());
+      });
+    </script>
+  </body>
+</html>
