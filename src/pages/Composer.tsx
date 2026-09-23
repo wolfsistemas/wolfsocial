@@ -178,7 +178,7 @@ export default function Composer() {
               type="datetime-local"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
-              className="w-full rounded-lg border border-white/15 bg-[#0d1119] px-3 py-2 text-sm text-slate-100 outline-none focus:border-violet-500"
+              className="w-full rounded-lg border border-white/15 bg-[#0d1119] px-3 py-2 text-base text-slate-100 outline-none focus:border-violet-500 sm:text-sm"
             />
           </Field>
           <ErrorText>{error}</ErrorText>

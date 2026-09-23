@@ -94,7 +94,7 @@ export function Field({
 }
 
 const controlClass =
-  'w-full rounded-lg border border-white/15 bg-[#0d1119] px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-violet-500'
+  'w-full rounded-lg border border-white/15 bg-[#0d1119] px-3 py-2 text-base text-slate-100 outline-none transition focus:border-violet-500 sm:text-sm'
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={clsx(controlClass, props.className)} />
