@@ -91,6 +91,74 @@ export interface Identity {
   expiresIn: number | null
 }
 
+interface FbPage {
+  id: string
+  name?: string
+  access_token?: string
+  instagram_business_account?: { id: string; username?: string }
+}
+
+const PAGE_FIELDS = 'id,name,access_token,instagram_business_account{id,username}'
+
+async function fetchGraphList(
+  path: string,
+  fields: string,
+  token: string,
+): Promise<Record<string, unknown>[]> {
+  const out: Record<string, unknown>[] = []
+  let url: string | null =
+    `https://graph.facebook.com/${graphVersion()}/${path}` +
+    `?${new URLSearchParams({ fields, access_token: token, limit: '100' })}`
+  let guard = 0
+  while (url && guard < 20) {
+    guard += 1
+    const res = await fetch(url)
+    const json = await res.json()
+    if (!res.ok) throw new Error(readError(json))
+    if (Array.isArray(json.data)) out.push(...json.data)
+    const next = (json.paging as Record<string, unknown> | undefined)?.next
+    url = typeof next === 'string' ? next : null
+  }
+  return out
+}
+
+// Lists Pages the user can act on, including Pages owned by a Business
+// Portfolio (which do not always show up under /me/accounts).
+async function listManagedPages(token: string): Promise<FbPage[]> {
+  const pages = (await fetchGraphList(
+    'me/accounts',
+    PAGE_FIELDS,
+    token,
+  )) as unknown as FbPage[]
+
+  let businesses: Record<string, unknown>[] = []
+  try {
+    businesses = await fetchGraphList('me/businesses', 'id,name', token)
+  } catch {
+    businesses = []
+  }
+  for (const biz of businesses) {
+    for (const edge of ['owned_pages', 'client_pages']) {
+      try {
+        const list = (await fetchGraphList(
+          `${String(biz.id)}/${edge}`,
+          PAGE_FIELDS,
+          token,
+        )) as unknown as FbPage[]
+        pages.push(...list)
+      } catch {
+        // Edge indisponivel para este portfolio; segue para o proximo.
+      }
+    }
+  }
+
+  const seen = new Map<string, FbPage>()
+  for (const page of pages) {
+    if (page?.id && !seen.has(page.id)) seen.set(page.id, page)
+  }
+  return [...seen.values()]
+}
+
 export async function exchangeCode(
   authPath: AuthPath,
   code: string,
@@ -159,30 +227,26 @@ export async function exchangeCode(
   const long = await longRes.json()
   if (!longRes.ok) throw new Error(readError(long))
 
-  const pagesRes = await fetch(
-    `https://graph.facebook.com/${graphVersion()}/me/accounts?${new URLSearchParams({
-      fields: 'id,name,access_token,instagram_business_account{id,username}',
-      access_token: long.access_token,
-    })}`,
-  )
-  const pages = await pagesRes.json()
-  if (!pagesRes.ok) throw new Error(readError(pages))
-
-  const page = (pages.data ?? []).find(
-    (p: Record<string, unknown>) => p.instagram_business_account,
-  )
+  const pages = await listManagedPages(long.access_token)
+  const page = pages.find((p) => p.instagram_business_account)
   if (!page) {
+    const seen = pages
+      .map((p) => p.name ?? p.id)
+      .slice(0, 10)
+      .join(', ')
     throw new Error(
-      'Nenhuma Pagina com conta profissional do Instagram foi encontrada. Vincule o Instagram a uma Pagina no Portifolio Empresarial.',
+      pages.length
+        ? `Nenhuma Pagina com conta profissional do Instagram foi encontrada. Paginas vistas: ${seen}. Vincule o Instagram a uma Pagina no Portfolio Empresarial.`
+        : 'Nenhuma Pagina do Facebook foi encontrada nesta conta. Crie uma Pagina e vincule o Instagram a ela no Portfolio Empresarial.',
     )
   }
-  const ig = page.instagram_business_account as Record<string, string>
+  const ig = page.instagram_business_account!
   return {
     igUserId: ig.id,
     username: ig.username ?? null,
     accountType: 'BUSINESS',
-    fbPageId: page.id as string,
-    accessToken: (page.access_token as string) ?? long.access_token,
+    fbPageId: page.id,
+    accessToken: page.access_token ?? long.access_token,
     expiresIn: long.expires_in ?? null,
   }
 }

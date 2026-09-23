@@ -51,8 +51,12 @@ O callback grava a conta em `public.social_accounts` com `auth_path`
    - **Login** (recomendado para comecar): define apenas as permissoes.
    - **Integracao empresarial**: permite selecionar ativos (Paginas) no fluxo.
 4. Na configuracao, selecione as permissoes:
-   - Base: `pages_show_list`, `pages_read_engagement`, `business_management`
+   - Base: `business_management`, `pages_show_list`, `pages_read_engagement`
+   - Instagram: `instagram_basic` (obrigatoria para a Página expor
+     `instagram_business_account`), `instagram_manage_comments`
    - Futuro (anuncios): `ads_read`, `ads_management`
+   - Obs.: se `instagram_basic` nao aparecer na lista, habilite primeiro o
+     caso de uso de Instagram com Login do Facebook em **Casos de uso**.
 5. Salve e copie o **ID da configuracao**.
 6. Em **Login do Facebook > Configuracoes**, confirme que a URI de
    redirecionamento esta cadastrada:
@@ -85,6 +89,12 @@ O callback grava a conta em `public.social_accounts` com `auth_path`
 ---
 
 ## 5. O que acontece ao conectar via Facebook
+
+Pre-requisito: a conta profissional do Instagram precisa estar **vinculada a
+uma Pagina do Facebook** (Pagina > Configuracoes > Contas vinculadas >
+Instagram). Estar apenas "dentro do Portfolio Empresarial" nao basta. A API
+procura a Pagina cujo campo `instagram_business_account` esta preenchido,
+incluindo Paginas de Portfolio (`/me/businesses/{id}/owned_pages`).
 
 1. Usuario autoriza o app no dialogo da Meta (com `config_id`).
 2. Callback troca o `code` por token de usuario e por token longo.
