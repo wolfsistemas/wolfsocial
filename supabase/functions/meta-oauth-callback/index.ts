@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
         status: 'connected',
         last_error: null,
       },
-      { onConflict: 'tenant_id,ig_user_id' },
+      { onConflict: 'tenant_id,auth_path,ig_user_id' },
     )
     if (error) throw error
 

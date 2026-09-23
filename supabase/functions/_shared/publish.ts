@@ -75,6 +75,30 @@ async function publishContainer(
   return String(data.id)
 }
 
+function isNotReady(message: string): boolean {
+  return (
+    message.includes('9007') ||
+    message.includes('2207027') ||
+    message.includes('Media ID is not available')
+  )
+}
+
+async function publishContainerSafe(
+  base: string,
+  igUserId: string,
+  containerId: string,
+  token: string,
+): Promise<{ mediaId?: string; notReady: boolean }> {
+  try {
+    const mediaId = await publishContainer(base, igUserId, containerId, token)
+    return { mediaId, notReady: false }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (isNotReady(message)) return { notReady: true }
+    throw err
+  }
+}
+
 function baseParams(token: string): Record<string, string> {
   return { access_token: token }
 }
@@ -151,23 +175,33 @@ export async function runPublish(ctx: PublishContext): Promise<PublishResult> {
   // Resume: a container was already created on a previous attempt.
   if (ctx.containerId) {
     const status = await containerStatus(base, ctx.containerId, ctx.accessToken)
+    if (status === 'PUBLISHED') {
+      return { done: true, containerId: ctx.containerId }
+    }
     if (status === 'FINISHED') {
-      const mediaId = await publishContainer(
+      const res = await publishContainerSafe(
         base,
         ctx.igUserId,
         ctx.containerId,
         ctx.accessToken,
       )
-      return { done: true, containerId: ctx.containerId, mediaId }
-    }
-    if (status === 'IN_PROGRESS' || status === 'UNKNOWN') {
+      if (res.mediaId) {
+        return { done: true, containerId: ctx.containerId, mediaId: res.mediaId }
+      }
       return {
         done: false,
         containerId: ctx.containerId,
-        note: 'Container ainda em processamento.',
+        note: 'Container pronto; aguardando publicacao.',
       }
     }
-    throw new Error(`Container invalido: ${status}`)
+    if (status === 'ERROR' || status === 'EXPIRED') {
+      throw new Error(`Container invalido: ${status}`)
+    }
+    return {
+      done: false,
+      containerId: ctx.containerId,
+      note: 'Container ainda em processamento.',
+    }
   }
 
   const containerId =
@@ -175,32 +209,28 @@ export async function runPublish(ctx: PublishContext): Promise<PublishResult> {
       ? await createCarouselContainer(ctx)
       : await createSingleContainer(ctx)
 
-  if (ctx.kind === 'story' || ctx.kind === 'image') {
-    const mediaId = await publishContainer(
-      base,
-      ctx.igUserId,
-      containerId,
-      ctx.accessToken,
-    )
-    return { done: true, containerId, mediaId }
+  const status = await waitForContainer(base, containerId, ctx.accessToken)
+  if (status === 'ERROR' || status === 'EXPIRED') {
+    throw new Error(`Processamento da midia falhou: ${status}`)
   }
 
-  const status = await waitForContainer(base, containerId, ctx.accessToken)
-  if (status === 'FINISHED') {
-    const mediaId = await publishContainer(
+  // Image/Story containers are usually ready at once; try to publish even when
+  // the status is still UNKNOWN, and fall back to the worker if not ready yet.
+  if (status === 'FINISHED' || (ctx.kind !== 'reels' && ctx.kind !== 'carousel' && status === 'UNKNOWN')) {
+    const res = await publishContainerSafe(
       base,
       ctx.igUserId,
       containerId,
       ctx.accessToken,
     )
-    return { done: true, containerId, mediaId }
+    if (res.mediaId) {
+      return { done: true, containerId, mediaId: res.mediaId }
+    }
   }
-  if (status === 'ERROR' || status === 'EXPIRED') {
-    throw new Error(`Processamento do video falhou: ${status}`)
-  }
+
   return {
     done: false,
     containerId,
-    note: 'Video ainda processando; o worker vai concluir.',
+    note: 'Midia ainda processando; o worker vai concluir.',
   }
 }

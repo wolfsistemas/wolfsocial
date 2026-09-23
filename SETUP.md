@@ -64,22 +64,31 @@ Guia de configuracao em etapas. Siga na ordem. Cada etapa diz o que testar.
 
 ## Etapa 3 - App Meta e permissoes
 
+O app e do tipo **Business** e usa dois produtos:
+- **Instagram Business Login** - publicacao de conteudo (funciona hoje).
+- **Facebook Login for Business** - Paginas e anuncios (futuro). Usa `config_id`.
+
 1. Em https://developers.facebook.com crie um app do tipo **Business**.
-2. Adicione os produtos **Instagram** e **Facebook Login**.
-3. Em **Facebook Login > Settings**, adicione a URL de redirecionamento:
-   `https://SEU_REF.supabase.co/functions/v1/meta-oauth-callback`
-4. Permissoes usadas pelo app:
-   - `instagram_basic`
-   - `instagram_content_publish`
-   - `instagram_manage_comments`
-   - `instagram_manage_insights`
-   - `pages_show_list`
-   - `pages_read_engagement`
-   - `business_management`
-5. Enquanto o app estiver em modo de desenvolvimento, so contas com papel no
-   app (admin/testador) conseguem conectar. Como e a sua conta, adicione-se como
-   admin/testador.
-6. **Teste:** em **Contas**, clique em *Conectar via Facebook*. Autorize. O app
+2. Adicione os casos de uso **Instagram** e **Login do Facebook para Empresas**.
+3. Configure o **Instagram Business Login**:
+   - Em **"API setup with Instagram login"**, copie o **ID** e a **chave** do app
+     do Instagram (sao diferentes dos do Facebook).
+   - Adicione a URI de redirecionamento
+     `https://SEU_REF.supabase.co/functions/v1/meta-oauth-callback` em
+     **"Configurar o login da empresa no Instagram"**.
+   - Em **Funcoes do app**, adicione a conta como **Testador do Instagram** e
+     aceite o convite no app do Instagram.
+   - Permissoes: `instagram_business_basic`,
+     `instagram_business_content_publish`, `instagram_business_manage_comments`,
+     `instagram_business_manage_insights`.
+4. (Opcional, para anuncios no futuro) Configure o **Facebook Login for Business**
+   conforme `docs/FACEBOOK.md`.
+5. Defina os secrets das credenciais:
+   ```bash
+   supabase secrets set META_INSTAGRAM_APP_ID=... META_INSTAGRAM_APP_SECRET=...
+   supabase secrets set META_APP_ID=... META_APP_SECRET=...
+   ```
+6. **Teste:** em **Contas**, clique em *Conectar via Instagram*. Autorize. O app
    deve voltar com "Conta conectada com sucesso".
 
 ---
@@ -142,6 +151,8 @@ As tabelas `ad_accounts` e `ad_campaigns` ja existem. A integracao real exige
 permissao `ads_management` com App Review, verificacao de negocio e conta de
 anuncios. Nesta fase, o trafego pago continua no Gerenciador de Anuncios da
 Meta. A tela **Anuncios** apenas exibe o que estiver registrado.
+
+Detalhes de configuracao do login via Facebook e dos anuncios: `docs/FACEBOOK.md`.
 
 ---
 

@@ -23,6 +23,7 @@ supabase/migrations/     Schema do banco (multi-tenant + RLS + storage + ads)
 supabase/functions/      Edge Functions (OAuth, publicacao, refresh de token)
 .github/workflows/       Deploy automatico para o GitHub Pages
 SETUP.md                 Passo a passo de configuracao e etapas de teste
+docs/FACEBOOK.md         Configuracao do Facebook Login for Business e anuncios
 ```
 
 ## Pre-requisitos

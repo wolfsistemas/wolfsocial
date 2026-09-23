@@ -16,6 +16,14 @@ export function metaAppSecret(): string {
   return secret
 }
 
+export function instagramAppId(): string {
+  return Deno.env.get('META_INSTAGRAM_APP_ID') ?? metaAppId()
+}
+
+export function instagramAppSecret(): string {
+  return Deno.env.get('META_INSTAGRAM_APP_SECRET') ?? metaAppSecret()
+}
+
 export function graphBase(authPath: AuthPath): string {
   return authPath === 'instagram'
     ? `https://graph.instagram.com/${graphVersion()}`
@@ -27,7 +35,7 @@ export function authorizeUrl(
   redirectUri: string,
   state: string,
 ): string {
-  const appId = metaAppId()
+  const appId = authPath === 'instagram' ? instagramAppId() : metaAppId()
   if (authPath === 'instagram') {
     const scope = [
       'instagram_business_basic',
@@ -43,6 +51,18 @@ export function authorizeUrl(
       state,
     })
     return `https://www.instagram.com/oauth/authorize?${params}`
+  }
+  const configId = Deno.env.get('META_FB_LOGIN_CONFIG_ID')
+  if (configId) {
+    const params = new URLSearchParams({
+      client_id: appId,
+      redirect_uri: redirectUri,
+      state,
+      response_type: 'code',
+      config_id: configId,
+      override_default_response_type: 'true',
+    })
+    return `https://www.facebook.com/${graphVersion()}/dialog/oauth?${params}`
   }
   const scope = [
     'instagram_basic',
@@ -81,8 +101,8 @@ export async function exchangeCode(
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: metaAppId(),
-        client_secret: metaAppSecret(),
+        client_id: instagramAppId(),
+        client_secret: instagramAppSecret(),
         grant_type: 'authorization_code',
         redirect_uri: redirectUri,
         code,
@@ -93,7 +113,7 @@ export async function exchangeCode(
     const long = await fetch(
       `https://graph.instagram.com/access_token?${new URLSearchParams({
         grant_type: 'ig_exchange_token',
-        client_secret: metaAppSecret(),
+        client_secret: instagramAppSecret(),
         access_token: short.access_token,
       })}`,
     )
