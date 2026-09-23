@@ -1,0 +1,112 @@
+export type PostKind = 'image' | 'carousel' | 'reels' | 'story'
+export type PostStatus =
+  | 'draft'
+  | 'scheduled'
+  | 'publishing'
+  | 'published'
+  | 'failed'
+  | 'canceled'
+export type MediaKind = 'image' | 'video'
+export type AuthPath = 'facebook' | 'instagram'
+export type AccountStatus = 'connected' | 'expired' | 'revoked' | 'error'
+
+export interface Tenant {
+  id: string
+  name: string
+  slug: string
+  created_at: string
+}
+
+export interface SocialAccount {
+  id: string
+  tenant_id: string
+  platform: string
+  auth_path: AuthPath
+  ig_user_id: string
+  username: string | null
+  account_type: string | null
+  fb_page_id: string | null
+  token_expires_at: string | null
+  scopes: string[] | null
+  status: AccountStatus
+  last_error: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface MediaAsset {
+  id: string
+  tenant_id: string
+  storage_path: string
+  public_url: string
+  kind: MediaKind
+  mime_type: string | null
+  size_bytes: number | null
+  width: number | null
+  height: number | null
+  duration_seconds: number | null
+  created_at: string
+}
+
+export interface PostItem {
+  id: string
+  post_id: string
+  media_asset_id: string
+  position: number
+  alt_text: string | null
+}
+
+export interface Post {
+  id: string
+  tenant_id: string
+  account_id: string
+  kind: PostKind
+  caption: string | null
+  location_id: string | null
+  collaborators: string[] | null
+  share_to_feed: boolean
+  cover_url: string | null
+  thumb_offset_ms: number | null
+  scheduled_at: string
+  status: PostStatus
+  ig_media_id: string | null
+  ig_container_id: string | null
+  attempts: number
+  last_error: string | null
+  published_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PostWithItems extends Post {
+  post_items: PostItem[]
+}
+
+export interface PublishLog {
+  id: number
+  post_id: string
+  level: string
+  message: string
+  payload: unknown
+  created_at: string
+}
+
+export interface AdAccount {
+  id: string
+  tenant_id: string
+  meta_ad_account_id: string
+  name: string | null
+  status: string
+  created_at: string
+}
+
+export interface AdCampaign {
+  id: string
+  tenant_id: string
+  ad_account_id: string
+  name: string
+  objective: string | null
+  status: string
+  daily_budget_cents: number | null
+  created_at: string
+}
