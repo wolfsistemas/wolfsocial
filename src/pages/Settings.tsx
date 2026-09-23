@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, Circle, Download, ExternalLink, Save } from 'lucide-react'
+import { Download, ExternalLink, Save } from 'lucide-react'
 import {
   Button,
   Card,
@@ -12,7 +12,6 @@ import {
 } from '../components/ui'
 import { updateTenantSettings } from '../lib/api'
 import { useSession } from '../lib/session'
-import { isConfigured } from '../lib/supabase'
 
 const TIMEZONES = [
   'America/Sao_Paulo',
@@ -28,15 +27,6 @@ const TIMEZONES = [
   'Europe/London',
   'Europe/Madrid',
   'UTC',
-]
-
-const checklist = [
-  { label: 'Projeto Supabase criado', key: 'supabase' },
-  { label: 'Variaveis VITE_SUPABASE_* configuradas', key: 'env' },
-  { label: 'Migracao aplicada (tabelas + RLS + bucket)', key: 'migration' },
-  { label: 'Edge Functions publicadas', key: 'functions' },
-  { label: 'App Meta criado e secrets definidos', key: 'meta' },
-  { label: 'Conta do Instagram conectada', key: 'account' },
 ]
 
 interface BeforeInstallPromptEvent extends Event {
@@ -142,27 +132,6 @@ export default function Settings() {
         <Button disabled={busy} onClick={() => void save()}>
           <Save size={16} /> Salvar preferencias
         </Button>
-      </Card>
-
-      <Card className="mb-5">
-        <p className="mb-3 text-sm font-medium text-slate-200">Checklist de configuracao</p>
-        <ul className="space-y-2">
-          {checklist.map((item) => {
-            const done = item.key === 'env' || item.key === 'supabase' ? isConfigured : false
-            const Icon = done ? CheckCircle2 : Circle
-            return (
-              <li key={item.key} className="flex items-center gap-2 text-sm">
-                <Icon
-                  size={16}
-                  className={done ? 'text-emerald-400' : 'text-slate-600'}
-                />
-                <span className={done ? 'text-slate-200' : 'text-slate-400'}>
-                  {item.label}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
       </Card>
 
       <Card className="mb-5">

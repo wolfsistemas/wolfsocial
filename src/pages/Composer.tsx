@@ -121,8 +121,9 @@ export default function Composer() {
       listMedia(tenant.id),
       listCaptionTemplates(tenant.id),
     ])
-      .then(async ([acc, media, tpl]) => {
+      .then(async ([accAll, media, tpl]) => {
         if (!active) return
+        const acc = accAll.filter((a) => a.status === 'connected')
         setAccounts(acc)
         setAssets(media)
         setTemplates(tpl)

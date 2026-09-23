@@ -60,6 +60,21 @@ export async function listAccounts(tenantId: string): Promise<SocialAccount[]> {
   return (data ?? []) as SocialAccount[]
 }
 
+export async function disconnectAccount(id: string): Promise<void> {
+  const sb = requireSupabase()
+  const { error } = await sb
+    .from('social_accounts')
+    .update({ status: 'disconnected', access_token_enc: null })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function removeAccount(id: string): Promise<void> {
+  const sb = requireSupabase()
+  const { error } = await sb.from('social_accounts').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function listMedia(tenantId: string): Promise<MediaAsset[]> {
   const sb = requireSupabase()
   const { data, error } = await sb

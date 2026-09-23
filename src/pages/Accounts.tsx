@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { AtSign, Link2, RefreshCw, ShieldCheck } from 'lucide-react'
+import { AtSign, Link2, RefreshCw, ShieldCheck, Trash2, Unlink } from 'lucide-react'
 import { Button, Card, ErrorText, EmptyState, PageHeader, StatusBadge } from '../components/ui'
-import { listAccounts, startInstagramConnect } from '../lib/api'
+import {
+  disconnectAccount,
+  listAccounts,
+  removeAccount,
+  startInstagramConnect,
+} from '../lib/api'
 import { formatDateTime } from '../lib/format'
 import { useSession } from '../lib/session'
 import type { SocialAccount } from '../lib/types'
@@ -51,6 +56,50 @@ export default function Accounts() {
       window.location.href = url
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao iniciar conexao')
+      setBusy(false)
+    }
+  }
+
+  async function unlink(id: string) {
+    if (
+      !window.confirm(
+        'Desconectar esta conta? Os agendamentos dela deixam de ser publicados. Voce pode reconectar depois.',
+      )
+    ) {
+      return
+    }
+    setError('')
+    setNotice('')
+    setBusy(true)
+    try {
+      await disconnectAccount(id)
+      await load()
+      setNotice('Conta desconectada.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao desconectar')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove(id: string) {
+    if (
+      !window.confirm(
+        'Remover esta conta e todo o historico de posts dela? Esta acao nao pode ser desfeita.',
+      )
+    ) {
+      return
+    }
+    setError('')
+    setNotice('')
+    setBusy(true)
+    try {
+      await removeAccount(id)
+      await load()
+      setNotice('Conta removida.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao remover')
+    } finally {
       setBusy(false)
     }
   }
@@ -134,13 +183,34 @@ export default function Accounts() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <StatusBadge status={account.status} />
-                <button
-                  type="button"
-                  onClick={() => void load()}
-                  className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
-                >
-                  <RefreshCw size={13} /> Atualizar
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void load()}
+                    className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200"
+                  >
+                    <RefreshCw size={13} /> Atualizar
+                  </button>
+                  {account.status === 'connected' ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void unlink(account.id)}
+                      className="inline-flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300 disabled:opacity-50"
+                    >
+                      <Unlink size={13} /> Desconectar
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void remove(account.id)}
+                      className="inline-flex items-center gap-1 text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+                    >
+                      <Trash2 size={13} /> Remover
+                    </button>
+                  )}
+                </div>
               </div>
             </Card>
           ))}

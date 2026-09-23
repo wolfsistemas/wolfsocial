@@ -55,7 +55,11 @@ export default function Queue() {
           offset,
           ascending,
         }),
-        reset ? listAccounts(tenant.id) : Promise.resolve(accounts),
+        reset
+          ? listAccounts(tenant.id).then((list) =>
+              list.filter((a) => a.status === 'connected'),
+            )
+          : Promise.resolve(accounts),
       ])
       setPosts(reset ? page : [...posts, ...page])
       setHasMore(page.length === PAGE_SIZE)

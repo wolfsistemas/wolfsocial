@@ -38,7 +38,7 @@ export default function Dashboard() {
       .then(([acc, post, media, ins]) => {
         if (!active) return
         const cutoff = Date.now() - 24 * 3600_000
-        setAccounts(acc)
+        setAccounts(acc.filter((a) => a.status === 'connected'))
         setPosts(post)
         setPublishedRecently(
           post.filter(
