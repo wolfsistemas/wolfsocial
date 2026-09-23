@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Card, ErrorText, PageHeader } from '../components/ui'
+import { Button, ErrorText, PageHeader } from '../components/ui'
 import { acceptInvite } from '../lib/api'
 import { useSession } from '../lib/session'
 import Login from './Login'
@@ -32,13 +32,9 @@ export default function Join() {
   if (!session) {
     return (
       <div>
-        <div className="mx-auto max-w-md px-4 pt-8">
-          <Card>
-            <p className="text-sm text-slate-300">
-              Entre com o email que recebeu o convite para aceita-lo.
-            </p>
-          </Card>
-        </div>
+        <p className="mx-auto max-w-md px-4 pt-8 text-center text-sm text-slate-400">
+          Entre com o email que recebeu o convite para aceita-lo.
+        </p>
         <Login />
       </div>
     )
