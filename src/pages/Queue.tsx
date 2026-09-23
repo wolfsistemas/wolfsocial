@@ -156,7 +156,8 @@ export default function Queue() {
             <option value="">Todas as contas</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                @{a.username ?? a.ig_user_id}
+                @{a.username ?? a.ig_user_id} · Via{' '}
+                {a.auth_path === 'facebook' ? 'Facebook' : 'Instagram'}
               </option>
             ))}
           </Select>

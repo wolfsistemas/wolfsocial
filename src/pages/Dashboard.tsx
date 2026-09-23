@@ -111,7 +111,10 @@ export default function Dashboard() {
                   <li key={account.id}>
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="text-slate-300">
-                        @{account.username ?? account.ig_user_id}
+                        @{account.username ?? account.ig_user_id} · Via{' '}
+                        {account.auth_path === 'facebook'
+                          ? 'Facebook'
+                          : 'Instagram'}
                       </span>
                       <span className="text-slate-500">
                         {used}/{dailyLimit}

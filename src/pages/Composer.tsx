@@ -126,7 +126,11 @@ export default function Composer() {
         setAccounts(acc)
         setAssets(media)
         setTemplates(tpl)
-        if (!editId && acc[0]) setAccountId(acc[0].id)
+        if (!editId) {
+          const preferred =
+            acc.find((a) => a.auth_path === 'instagram') ?? acc[0]
+          if (preferred) setAccountId(preferred.id)
+        }
         if (!editId) {
           setScheduledAt(
             isoToZonedInput(new Date(Date.now() + 3600_000).toISOString(), timezone),
@@ -366,7 +370,8 @@ export default function Composer() {
             <Select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  @{a.username ?? a.ig_user_id}
+                  @{a.username ?? a.ig_user_id} · Via{' '}
+                  {a.auth_path === 'facebook' ? 'Facebook' : 'Instagram'}
                 </option>
               ))}
             </Select>
