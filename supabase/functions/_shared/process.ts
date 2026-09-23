@@ -87,6 +87,19 @@ export async function processPost(postId: string): Promise<void> {
         : result.note ?? 'Aguardando processamento.',
       { mediaId: result.mediaId, containerId: result.containerId },
     )
+
+    if (result.warning) {
+      await log(post.id, post.tenant_id, 'warn', result.warning, {
+        mediaId: result.mediaId,
+        containerId: result.containerId,
+      })
+      await notify(
+        post.tenant_id,
+        'warn',
+        'Post publicado com aviso',
+        result.warning,
+      )
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     await handleError(sb, post, message)

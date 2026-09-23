@@ -284,7 +284,13 @@ export function readError(payload: unknown): string {
     const obj = payload as Record<string, unknown>
     const err = obj.error as Record<string, unknown> | undefined
     if (err) {
-      const parts = [err.message, err.type, err.code, err.error_subcode]
+      const parts = [
+        err.message,
+        err.type,
+        err.code,
+        err.error_subcode,
+        err.error_user_msg,
+      ]
         .filter(Boolean)
         .join(' | ')
       return parts || JSON.stringify(obj)

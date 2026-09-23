@@ -6,6 +6,12 @@ interface PublishResult {
   containerId: string
   mediaId?: string
   note?: string
+  warning?: string
+}
+
+interface ContainerResult {
+  id: string
+  warning?: string
 }
 
 async function apiPost(
@@ -104,35 +110,74 @@ function baseParams(token: string): Record<string, string> {
 }
 
 // Params shared by feed-style containers (image, carousel, reels).
-function feedExtras(ctx: PublishContext): Record<string, string> {
+function feedExtras(
+  ctx: PublishContext,
+  withCollaborators = true,
+): Record<string, string> {
   return {
     ...(ctx.caption ? { caption: ctx.caption } : {}),
     ...(ctx.locationId ? { location_id: ctx.locationId } : {}),
-    ...(ctx.collaborators && ctx.collaborators.length
+    ...(withCollaborators && ctx.collaborators && ctx.collaborators.length
       ? { collaborators: JSON.stringify(ctx.collaborators) }
       : {}),
   }
 }
 
+function hasCollaborators(ctx: PublishContext): boolean {
+  return Boolean(ctx.collaborators && ctx.collaborators.length)
+}
+
+// The Meta API rejects the whole container when a collaborator is private,
+// invalid or cannot be tagged. In that case we retry without collaborators so
+// the post still goes out, and surface a warning.
+function isCollaboratorError(message: string): boolean {
+  return (
+    message.includes('2207018') ||
+    message.includes('2207066') ||
+    /colaborador|collaborator|Invalid user id|not visible/i.test(message)
+  )
+}
+
+async function createWithCollabFallback(
+  ctx: PublishContext,
+  build: (extras: Record<string, string>) => Promise<Record<string, unknown>>,
+): Promise<ContainerResult> {
+  try {
+    const created = await build(feedExtras(ctx, true))
+    return { id: String(created.id) }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    if (!hasCollaborators(ctx) || !isCollaboratorError(message)) throw err
+    const created = await build(feedExtras(ctx, false))
+    return {
+      id: String(created.id),
+      warning: `Colaboradores ignorados: a Meta recusou ${(ctx.collaborators ?? [])
+        .map((c) => `@${c.replace(/^@/, '')}`)
+        .join(', ')}. O post foi publicado sem eles.`,
+    }
+  }
+}
+
 async function createSingleContainer(
   ctx: PublishContext,
-): Promise<string> {
+): Promise<ContainerResult> {
   const base = graphBase(ctx.authPath)
   const params = baseParams(ctx.accessToken)
   const item = ctx.items[0]
   if (!item) throw new Error('Post sem midia.')
 
   if (ctx.kind === 'reels') {
-    const created = await apiPost(base, `${ctx.igUserId}/media`, {
-      ...params,
-      media_type: 'REELS',
-      video_url: item.public_url,
-      share_to_feed: String(ctx.shareToFeed),
-      ...feedExtras(ctx),
-      ...(ctx.coverUrl ? { cover_url: ctx.coverUrl } : {}),
-      ...(ctx.thumbOffsetMs ? { thumb_offset: String(ctx.thumbOffsetMs) } : {}),
-    })
-    return String(created.id)
+    return createWithCollabFallback(ctx, (extras) =>
+      apiPost(base, `${ctx.igUserId}/media`, {
+        ...params,
+        media_type: 'REELS',
+        video_url: item.public_url,
+        share_to_feed: String(ctx.shareToFeed),
+        ...extras,
+        ...(ctx.coverUrl ? { cover_url: ctx.coverUrl } : {}),
+        ...(ctx.thumbOffsetMs ? { thumb_offset: String(ctx.thumbOffsetMs) } : {}),
+      }),
+    )
   }
 
   if (ctx.kind === 'story') {
@@ -142,20 +187,23 @@ async function createSingleContainer(
       media_type: 'STORIES',
       [key]: item.public_url,
     })
-    return String(created.id)
+    return { id: String(created.id) }
   }
 
   // image feed
-  const created = await apiPost(base, `${ctx.igUserId}/media`, {
-    ...params,
-    image_url: item.public_url,
-    ...(item.alt_text ? { alt_text: item.alt_text } : {}),
-    ...feedExtras(ctx),
-  })
-  return String(created.id)
+  return createWithCollabFallback(ctx, (extras) =>
+    apiPost(base, `${ctx.igUserId}/media`, {
+      ...params,
+      image_url: item.public_url,
+      ...(item.alt_text ? { alt_text: item.alt_text } : {}),
+      ...extras,
+    }),
+  )
 }
 
-async function createCarouselContainer(ctx: PublishContext): Promise<string> {
+async function createCarouselContainer(
+  ctx: PublishContext,
+): Promise<ContainerResult> {
   const base = graphBase(ctx.authPath)
   const params = baseParams(ctx.accessToken)
   const children: string[] = []
@@ -172,13 +220,14 @@ async function createCarouselContainer(ctx: PublishContext): Promise<string> {
     children.push(String(created.id))
   }
 
-  const parent = await apiPost(base, `${ctx.igUserId}/media`, {
-    ...params,
-    media_type: 'CAROUSEL',
-    children: children.join(','),
-    ...feedExtras(ctx),
-  })
-  return String(parent.id)
+  return createWithCollabFallback(ctx, (extras) =>
+    apiPost(base, `${ctx.igUserId}/media`, {
+      ...params,
+      media_type: 'CAROUSEL',
+      children: children.join(','),
+      ...extras,
+    }),
+  )
 }
 
 export async function runPublish(ctx: PublishContext): Promise<PublishResult> {
@@ -216,10 +265,12 @@ export async function runPublish(ctx: PublishContext): Promise<PublishResult> {
     }
   }
 
-  const containerId =
+  const container =
     ctx.kind === 'carousel'
       ? await createCarouselContainer(ctx)
       : await createSingleContainer(ctx)
+  const containerId = container.id
+  const warning = container.warning
 
   const status = await waitForContainer(base, containerId, ctx.accessToken)
   if (status === 'ERROR' || status === 'EXPIRED') {
@@ -236,7 +287,7 @@ export async function runPublish(ctx: PublishContext): Promise<PublishResult> {
       ctx.accessToken,
     )
     if (res.mediaId) {
-      return { done: true, containerId, mediaId: res.mediaId }
+      return { done: true, containerId, mediaId: res.mediaId, warning }
     }
   }
 
@@ -244,5 +295,6 @@ export async function runPublish(ctx: PublishContext): Promise<PublishResult> {
     done: false,
     containerId,
     note: 'Midia ainda processando; o worker vai concluir.',
+    warning,
   }
 }

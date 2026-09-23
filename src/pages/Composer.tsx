@@ -231,10 +231,12 @@ export default function Composer() {
   }
 
   async function saveTemplate() {
+    setNotice('')
     if (!tenant || !templateName.trim()) {
       setError('Dê um nome para o template.')
       return
     }
+    setError('')
     try {
       await createCaptionTemplate({
         tenantId: tenant.id,
