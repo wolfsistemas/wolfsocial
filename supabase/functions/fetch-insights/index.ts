@@ -19,7 +19,15 @@ Deno.serve(async (req) => {
   if (!service && !userId) return json({ error: 'Nao autorizado.' }, 401)
 
   const sb = adminClient()
-  const force = new URL(req.url).searchParams.get('force') === '1'
+  let force = new URL(req.url).searchParams.get('force') === '1'
+  if (!force) {
+    try {
+      const body = await req.clone().json()
+      force = body?.force === true
+    } catch {
+      // no JSON body
+    }
+  }
 
   let tenantIds: string[] | null = null
   if (userId) {

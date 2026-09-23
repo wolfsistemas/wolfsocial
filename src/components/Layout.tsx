@@ -45,7 +45,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-1 flex-col gap-1">
+    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
       {nav.map(({ to, label, icon: Icon, end }) => (
         <NavLink key={to} to={to} end={end} className={linkClass} onClick={onNavigate}>
           <Icon size={17} />
@@ -57,12 +57,29 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function AccountFooter() {
-  const { tenant, email, signOut } = useSession()
+  const { tenant, tenants, setActiveTenant, email, signOut } = useSession()
   return (
     <div className="mt-4 border-t border-white/10 pt-3">
-      <p className="truncate px-2 text-xs text-slate-500">
-        {tenant?.name ?? 'Sem espaco'}
-      </p>
+      {tenants.length > 1 ? (
+        <label className="mb-2 block px-2">
+          <span className="mb-1 block text-xs text-slate-500">Espaco ativo</span>
+          <select
+            value={tenant?.id ?? ''}
+            onChange={(e) => setActiveTenant(e.target.value)}
+            className="w-full rounded-lg border border-white/15 bg-[#0d1119] px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-violet-500"
+          >
+            {tenants.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <p className="truncate px-2 text-xs text-slate-500">
+          {tenant?.name ?? 'Sem espaco'}
+        </p>
+      )}
       <p className="truncate px-2 text-xs text-slate-600">{email}</p>
       <button
         type="button"

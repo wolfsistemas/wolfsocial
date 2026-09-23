@@ -6,7 +6,7 @@ import { useSession } from '../lib/session'
 import Login from './Login'
 
 export default function Join() {
-  const { session, refreshTenant } = useSession()
+  const { session, refreshTenant, setActiveTenant } = useSession()
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const [error, setError] = useState('')
@@ -18,15 +18,16 @@ export default function Join() {
     if (!session || !token || attempted.current) return
     attempted.current = true
     acceptInvite(token)
-      .then(async () => {
+      .then(async (tenantId) => {
         setNotice('Convite aceito. Bem-vindo ao espaco!')
         await refreshTenant()
+        if (tenantId) setActiveTenant(tenantId)
         window.setTimeout(() => navigate('/'), 1200)
       })
       .catch((err) =>
         setError(err instanceof Error ? err.message : 'Falha ao aceitar convite'),
       )
-  }, [session, token, refreshTenant, navigate])
+  }, [session, token, refreshTenant, setActiveTenant, navigate])
 
   if (!session) {
     return (

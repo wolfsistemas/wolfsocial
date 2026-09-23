@@ -41,7 +41,7 @@ export default function Queue() {
   const [busyId, setBusyId] = useState('')
 
   const timezone = tenant?.timezone ?? undefined
-  const ascending = !['published', 'failed', 'canceled'].includes(filter)
+  const ascending = filter === 'scheduled' || filter === 'draft'
 
   async function load(reset = true) {
     if (!tenant) return

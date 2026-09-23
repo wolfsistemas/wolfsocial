@@ -6,9 +6,7 @@ import {
   endOfMonth,
   endOfWeek,
   format,
-  isSameDay,
   isSameMonth,
-  isToday,
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
@@ -41,6 +39,9 @@ export default function Calendar() {
   const [busyDay, setBusyDay] = useState('')
 
   const timezone = tenant?.timezone ?? 'America/Sao_Paulo'
+  const dayKey = (date: Date) => format(date, 'yyyy-MM-dd')
+  const keyOfPost = (iso: string) => isoToZonedInput(iso, timezone).slice(0, 10)
+  const todayKey = isoToZonedInput(new Date().toISOString(), timezone).slice(0, 10)
 
   async function load() {
     if (!tenant) return
@@ -68,7 +69,8 @@ export default function Calendar() {
   }, [month])
 
   function postsForDay(day: Date) {
-    return posts.filter((p) => isSameDay(new Date(p.scheduled_at), day))
+    const key = dayKey(day)
+    return posts.filter((p) => keyOfPost(p.scheduled_at) === key)
   }
 
   async function dropOn(day: Date) {
@@ -76,7 +78,7 @@ export default function Calendar() {
     const post = posts.find((p) => p.id === dragging)
     setDragging('')
     if (!post) return
-    const key = day.toISOString().slice(0, 10)
+    const key = dayKey(day)
     const time = isoToZonedInput(post.scheduled_at, timezone).slice(11)
     const nextIso = zonedToIso(`${key}T${time}`, timezone)
     if (nextIso === post.scheduled_at) return
@@ -148,7 +150,7 @@ export default function Calendar() {
           {days.map((day) => {
             const dayPosts = postsForDay(day)
             const inMonth = isSameMonth(day, month)
-            const key = day.toISOString().slice(0, 10)
+            const key = dayKey(day)
             return (
               <div
                 key={key}
@@ -165,7 +167,7 @@ export default function Calendar() {
                 <div
                   className={
                     'mb-1 text-right text-xs ' +
-                    (isToday(day)
+                    (key === todayKey
                       ? 'font-semibold text-violet-300'
                       : 'text-slate-500')
                   }

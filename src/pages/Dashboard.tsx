@@ -18,6 +18,7 @@ export default function Dashboard() {
   const { tenant } = useSession()
   const [accounts, setAccounts] = useState<SocialAccount[]>([])
   const [posts, setPosts] = useState<PostWithItems[]>([])
+  const [publishedRecently, setPublishedRecently] = useState<PostWithItems[]>([])
   const [insights, setInsights] = useState<PostInsight[]>([])
   const [mediaCount, setMediaCount] = useState(0)
   const [error, setError] = useState('')
@@ -36,8 +37,14 @@ export default function Dashboard() {
     ])
       .then(([acc, post, media, ins]) => {
         if (!active) return
+        const cutoff = Date.now() - 24 * 3600_000
         setAccounts(acc)
         setPosts(post)
+        setPublishedRecently(
+          post.filter(
+            (p) => p.published_at && new Date(p.published_at).getTime() >= cutoff,
+          ),
+        )
         setMediaCount(media.length)
         setInsights(ins)
       })
@@ -55,11 +62,6 @@ export default function Dashboard() {
     .filter((p) => p.status === 'scheduled')
     .sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at))
     .slice(0, 5)
-
-  const since = Date.now() - 24 * 3600_000
-  const publishedLast24h = posts.filter(
-    (p) => p.published_at && new Date(p.published_at).getTime() >= since,
-  )
 
   const reachTotal = insights.reduce((acc, i) => acc + (Number(i.reach) || 0), 0)
   const likesTotal = insights.reduce((acc, i) => acc + (Number(i.likes) || 0), 0)
@@ -101,7 +103,7 @@ export default function Dashboard() {
           ) : (
             <ul className="space-y-3">
               {accounts.map((account) => {
-                const used = publishedLast24h.filter(
+                const used = publishedRecently.filter(
                   (p) => p.account_id === account.id,
                 ).length
                 const pct = Math.min(100, Math.round((used / dailyLimit) * 100))

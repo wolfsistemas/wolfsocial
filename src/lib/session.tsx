@@ -8,20 +8,24 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { getMyTenant } from './api'
+import { listMyTenants } from './api'
 import { isConfigured, supabase } from './supabase'
 import type { Tenant } from './types'
+
+const ACTIVE_TENANT_KEY = 'wolfsocial.activeTenant'
 
 interface SessionState {
   configured: boolean
   loading: boolean
   session: Session | null
   tenant: Tenant | null
+  tenants: Tenant[]
   email: string | null
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   refreshTenant: () => Promise<void>
+  setActiveTenant: (tenantId: string) => void
 }
 
 const SessionContext = createContext<SessionState | null>(null)
@@ -29,16 +33,34 @@ const SessionContext = createContext<SessionState | null>(null)
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(isConfigured)
   const [session, setSession] = useState<Session | null>(null)
-  const [tenant, setTenant] = useState<Tenant | null>(null)
+  const [tenants, setTenants] = useState<Tenant[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
 
   const loadTenant = useCallback(async () => {
     try {
-      const t = await getMyTenant()
-      setTenant(t)
+      const list = await listMyTenants()
+      setTenants(list)
+      const stored = window.localStorage.getItem(ACTIVE_TENANT_KEY)
+      const resolved =
+        stored && list.some((t) => t.id === stored)
+          ? stored
+          : (list[0]?.id ?? null)
+      setActiveId(resolved)
     } catch {
-      setTenant(null)
+      setTenants([])
+      setActiveId(null)
     }
   }, [])
+
+  const setActiveTenant = useCallback((tenantId: string) => {
+    window.localStorage.setItem(ACTIVE_TENANT_KEY, tenantId)
+    setActiveId(tenantId)
+  }, [])
+
+  const tenant = useMemo(
+    () => tenants.find((t) => t.id === activeId) ?? tenants[0] ?? null,
+    [tenants, activeId],
+  )
 
   useEffect(() => {
     if (!isConfigured || !supabase) {
@@ -57,7 +79,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (next) {
         void loadTenant()
       } else {
-        setTenant(null)
+        setTenants([])
+        setActiveId(null)
       }
     })
     return () => {
@@ -92,13 +115,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       loading,
       session,
       tenant,
+      tenants,
       email: session?.user.email ?? null,
       signIn,
       signUp,
       signOut,
       refreshTenant: loadTenant,
+      setActiveTenant,
     }),
-    [loading, session, tenant, signIn, signUp, signOut, loadTenant],
+    [loading, session, tenant, tenants, signIn, signUp, signOut, loadTenant, setActiveTenant],
   )
 
   return (

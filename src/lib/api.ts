@@ -22,15 +22,22 @@ import type {
 const TENANT_COLUMNS =
   'id, name, slug, timezone, alert_webhook_url, daily_publish_limit, created_at'
 
-export async function getMyTenant(): Promise<Tenant | null> {
+export async function listMyTenants(): Promise<Tenant[]> {
   const sb = requireSupabase()
-  const { data: memberships, error: mErr } = await sb
+  const { data, error } = await sb
     .from('memberships')
     .select(`tenant_id, tenants:tenant_id(${TENANT_COLUMNS})`)
-    .limit(1)
-  if (mErr) throw mErr
-  const first = memberships?.[0] as unknown as { tenants: Tenant | null } | undefined
-  return first?.tenants ?? null
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  const rows = (data ?? []) as unknown as Array<{ tenants: Tenant | null }>
+  return rows
+    .map((row) => row.tenants)
+    .filter((t): t is Tenant => Boolean(t))
+}
+
+export async function getMyTenant(): Promise<Tenant | null> {
+  const tenants = await listMyTenants()
+  return tenants[0] ?? null
 }
 
 export async function updateTenantSettings(
@@ -127,7 +134,10 @@ async function optimizeImage(file: File): Promise<File> {
     const blob = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, 'image/jpeg', 0.9),
     )
-    if (!blob || blob.size >= file.size) return file
+    // Non-JPEG formats must always become JPEG, even if slightly larger,
+    // because the Instagram publishing API only accepts JPEG images.
+    if (!blob) return file
+    if (!needsConvert && blob.size >= file.size && !needsResize) return file
     return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
       type: 'image/jpeg',
     })
@@ -631,10 +641,14 @@ export async function listTeamMembers(tenantId: string): Promise<TeamMember[]> {
 
 export async function myRole(tenantId: string): Promise<MemberRole | null> {
   const sb = requireSupabase()
+  const { data: userData } = await sb.auth.getUser()
+  const uid = userData.user?.id
+  if (!uid) return null
   const { data, error } = await sb
     .from('memberships')
     .select('role')
     .eq('tenant_id', tenantId)
+    .eq('user_id', uid)
     .maybeSingle()
   if (error) throw error
   return (data?.role as MemberRole) ?? null
