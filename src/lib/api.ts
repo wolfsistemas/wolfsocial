@@ -1,4 +1,5 @@
 import { requireSupabase } from './supabase'
+import { randomId } from './format'
 import type {
   AdAccount,
   AdCampaign,
@@ -186,7 +187,7 @@ export async function uploadMedia(
   const sb = requireSupabase()
   const prepared = file.type.startsWith('image/') ? await optimizeImage(file) : file
   const ext = prepared.name.includes('.') ? prepared.name.split('.').pop() : 'bin'
-  const path = `${tenantId}/${crypto.randomUUID()}.${ext}`
+  const path = `${tenantId}/${randomId()}.${ext}`
   const { error: upErr } = await sb.storage
     .from('media')
     .upload(path, prepared, { contentType: prepared.type, upsert: false })
@@ -281,7 +282,7 @@ function postColumns(input: CreatePostInput) {
     caption: input.caption || null,
     scheduled_at: input.scheduledAt,
     status: input.status ?? 'scheduled',
-    idempotency_key: crypto.randomUUID(),
+    idempotency_key: randomId(),
     share_to_feed: input.shareToFeed ?? true,
     cover_url: input.coverUrl ?? null,
     thumb_offset_ms: input.thumbOffsetMs ?? null,
