@@ -45,17 +45,44 @@ Deno.serve(async (req) => {
 
     const phoneNumberId = String(body.phoneNumberId ?? '').trim()
     const accessToken = String(body.accessToken ?? '').trim()
-    if (!phoneNumberId || !accessToken) {
-      return json(
-        { error: 'phoneNumberId e accessToken sao obrigatorios.' },
-        400,
-      )
+    if (!phoneNumberId) {
+      return json({ error: 'phoneNumberId obrigatorio.' }, 400)
     }
     const wabaId = body.wabaId ? String(body.wabaId).trim() : null
     const alertPhone = body.alertPhone
       ? normalizePhone(String(body.alertPhone))
       : null
     const notifyEnabled = Boolean(body.notifyEnabled)
+
+    // Without a token we can only update the editable settings of an
+    // already connected account (alert phone, notifications, WABA id).
+    if (!accessToken) {
+      const { data: existing } = await sb
+        .from('whatsapp_accounts')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('phone_number_id', phoneNumberId)
+        .maybeSingle()
+      if (!existing) {
+        return json(
+          { error: 'accessToken obrigatorio para conectar.' },
+          400,
+        )
+      }
+      const patch: Record<string, unknown> = {
+        status: 'connected',
+        notify_enabled: notifyEnabled,
+        alert_phone: alertPhone,
+        last_error: null,
+      }
+      if (wabaId) patch.waba_id = wabaId
+      const { error } = await sb
+        .from('whatsapp_accounts')
+        .update(patch)
+        .eq('id', existing.id)
+      if (error) throw error
+      return json({ ok: true })
+    }
 
     // Validates the token and reads the phone metadata from Meta.
     const info = await fetchPhoneInfo(phoneNumberId, accessToken)
