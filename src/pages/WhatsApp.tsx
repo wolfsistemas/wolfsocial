@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Bot,
+  Copy,
+  KeyRound,
   MessageCircle,
+  Plus,
   RefreshCw,
   Send,
   ShieldCheck,
   Trash2,
+  XCircle,
 } from 'lucide-react'
 import {
   Button,
@@ -16,15 +21,24 @@ import {
   StatusBadge,
 } from '../components/ui'
 import {
+  cancelOutbox,
+  createRobotDevice,
+  enqueueOutbox,
   invokeFunction,
+  listOutbox,
+  listRobotDevices,
   listWhatsappAccounts,
   listWhatsappMessages,
   listWhatsappTemplates,
+  removeRobotDevice,
   removeWhatsappAccount,
+  rotateRobotDevice,
 } from '../lib/api'
 import { useSession } from '../lib/session'
 import { supabaseUrl } from '../lib/supabase'
 import type {
+  RobotDevice,
+  WaOutboxMessage,
   WhatsappAccount,
   WhatsappMessage,
   WhatsappTemplate,
@@ -47,6 +61,13 @@ export default function WhatsApp() {
     'Ola! Teste do WolfSocial via WhatsApp Cloud API.',
   )
 
+  const [devices, setDevices] = useState<RobotDevice[]>([])
+  const [outbox, setOutbox] = useState<WaOutboxMessage[]>([])
+  const [newDeviceName, setNewDeviceName] = useState('')
+  const [deviceToken, setDeviceToken] = useState('')
+  const [queueTo, setQueueTo] = useState('')
+  const [queueText, setQueueText] = useState('Mensagem de teste pelo robo local.')
+
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
@@ -59,12 +80,16 @@ export default function WhatsApp() {
   async function load() {
     if (!tenant) return
     try {
-      const [accounts, msgs] = await Promise.all([
+      const [accounts, msgs, devs, queue] = await Promise.all([
         listWhatsappAccounts(tenant.id),
         listWhatsappMessages(tenant.id),
+        listRobotDevices(tenant.id),
+        listOutbox(tenant.id),
       ])
       setAccount(accounts[0] ?? null)
       setMessages(msgs)
+      setDevices(devs)
+      setOutbox(queue)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao carregar WhatsApp')
     }
@@ -141,11 +166,54 @@ export default function WhatsApp() {
     }, 'Templates atualizados.')
   }
 
+  function addDevice() {
+    if (!tenant) return
+    void run(async () => {
+      const created = await createRobotDevice(
+        tenant.id,
+        newDeviceName.trim() || 'Meu computador',
+      )
+      setDeviceToken(created.token)
+      setNewDeviceName('')
+    }, 'Dispositivo criado. Copie o token agora.')
+  }
+
+  function rotateDevice(deviceId: string) {
+    if (!tenant) return
+    void run(async () => {
+      setDeviceToken(await rotateRobotDevice(tenant.id, deviceId))
+    }, 'Token renovado. Copie agora.')
+  }
+
+  function deleteDevice(deviceId: string) {
+    if (!tenant) return
+    if (!window.confirm('Remover este dispositivo? O robo para de receber a fila.')) return
+    void run(() => removeRobotDevice(tenant.id, deviceId), 'Dispositivo removido.')
+  }
+
+  function enqueue() {
+    if (!tenant) return
+    void run(async () => {
+      if (!queueTo.replace(/\D/g, '')) throw new Error('Informe o numero de destino.')
+      await enqueueOutbox({ tenantId: tenant.id, to: queueTo, body: queueText })
+      setQueueText('')
+    }, 'Mensagem adicionada na fila.')
+  }
+
+  function cancel(id: string) {
+    void run(() => cancelOutbox(id), 'Item cancelado.')
+  }
+
+  function copyToken() {
+    void navigator.clipboard?.writeText(deviceToken)
+    setNotice('Token copiado.')
+  }
+
   return (
     <div>
       <PageHeader
         title="WhatsApp"
-        description="Conecte um numero oficial (WhatsApp Cloud API) para envios e avisos."
+        description="Numero oficial (Cloud API) para envios e avisos, ou o robo local (WhatsApp Web) para o seu numero."
       />
 
       <Card className="mb-5">
@@ -301,6 +369,162 @@ export default function WhatsApp() {
           ) : null}
         </Card>
       ) : null}
+
+      <Card className="mb-5">
+        <div className="mb-2 flex items-center gap-2">
+          <Bot size={16} className="text-violet-300" />
+          <p className="text-sm font-medium text-slate-200">
+            Robo local (WhatsApp Web)
+          </p>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          Para o seu numero pessoal/Business (nao oficial), o envio sai do seu
+          computador via WhatsApp Web. O WolfSocial so enfileira as mensagens e o
+          robo busca (sem expor porta). Use apenas para uso proprio e com
+          mensagens pontuais.
+        </p>
+
+        {deviceToken ? (
+          <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+            <p className="mb-2 text-xs text-amber-200">
+              Copie o token agora. Ele nao sera exibido de novo.
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 break-all rounded bg-black/40 px-2 py-1 text-xs text-amber-100">
+                {deviceToken}
+              </code>
+              <Button variant="ghost" onClick={copyToken}>
+                <Copy size={14} />
+                Copiar
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {devices.length ? (
+          <div className="mb-3 space-y-2">
+            {devices.map((device) => (
+              <div
+                key={device.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2"
+              >
+                <div>
+                  <p className="text-sm text-slate-200">{device.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {device.last_seen_at
+                      ? `Visto em ${new Date(device.last_seen_at).toLocaleString('pt-BR')}`
+                      : 'Nunca conectou'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" disabled={busy} onClick={() => rotateDevice(device.id)}>
+                    <KeyRound size={14} />
+                    Novo token
+                  </Button>
+                  <Button variant="danger" disabled={busy} onClick={() => deleteDevice(device.id)}>
+                    <Trash2 size={14} />
+                    Remover
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-3 text-sm text-slate-500">
+            Nenhum dispositivo ainda. Crie um e cole o token no robo da sua maquina.
+          </p>
+        )}
+
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <Field label="Nome do dispositivo" hint="Ex.: PC do escritorio">
+            <Input
+              value={newDeviceName}
+              onChange={(e) => setNewDeviceName(e.target.value)}
+              placeholder="Meu computador"
+            />
+          </Field>
+          <Button disabled={busy} onClick={addDevice}>
+            <Plus size={16} />
+            Criar dispositivo
+          </Button>
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <p className="mb-3 text-sm font-medium text-slate-200">
+            Enfileirar mensagem
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Para (DDI+DDD+numero)">
+              <Input
+                value={queueTo}
+                onChange={(e) => setQueueTo(e.target.value)}
+                placeholder="5562999999999"
+              />
+            </Field>
+            <Field label="Mensagem">
+              <Input
+                value={queueText}
+                onChange={(e) => setQueueText(e.target.value)}
+              />
+            </Field>
+          </div>
+          <div className="mt-3">
+            <Button disabled={busy} onClick={enqueue}>
+              <Send size={16} />
+              Adicionar na fila
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 text-sm font-medium text-slate-200">Fila do robo</p>
+          {outbox.length === 0 ? (
+            <p className="text-sm text-slate-500">Fila vazia.</p>
+          ) : (
+            <div className="overflow-hidden rounded-lg border border-white/10">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-white/5 text-slate-400">
+                  <tr>
+                    <th className="px-3 py-2">Para</th>
+                    <th className="px-3 py-2">Mensagem</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {outbox.map((item) => (
+                    <tr key={item.id} className="border-t border-white/5">
+                      <td className="px-3 py-2 text-slate-300">{item.to_phone}</td>
+                      <td className="max-w-[16rem] truncate px-3 py-2 text-slate-400">
+                        {item.body ?? `(${item.kind})`}
+                      </td>
+                      <td className="px-3 py-2">
+                        <StatusBadge status={item.status} />
+                        {item.status === 'failed' && item.last_error ? (
+                          <span className="ml-1 text-red-300" title={item.last_error}>
+                            !
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        {item.status === 'queued' || item.status === 'sending' ? (
+                          <button
+                            className="text-slate-400 hover:text-red-300"
+                            onClick={() => cancel(item.id)}
+                            title="Cancelar"
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Card>
 
       <Card>
         <p className="mb-3 text-sm font-medium text-slate-200">

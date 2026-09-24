@@ -15,9 +15,11 @@ import type {
   PostStatus,
   PostWithItems,
   PublishLog,
+  RobotDevice,
   SocialAccount,
   TeamMember,
   Tenant,
+  WaOutboxMessage,
   WhatsappAccount,
   WhatsappMessage,
   WhatsappTemplate,
@@ -769,4 +771,89 @@ export async function listWhatsappTemplates(
     { tenantId },
   )
   return data?.templates ?? []
+}
+
+// ---------------------------------------------------------------------------
+// Local robot (WhatsApp Web) bridge - pull-only queue
+// ---------------------------------------------------------------------------
+export async function listRobotDevices(tenantId: string): Promise<RobotDevice[]> {
+  const data = await invokeFunction<{ devices: RobotDevice[] }>('robot-device', {
+    tenantId,
+    action: 'list',
+  })
+  return data?.devices ?? []
+}
+
+export async function createRobotDevice(
+  tenantId: string,
+  name: string,
+): Promise<{ device: RobotDevice; token: string }> {
+  return invokeFunction<{ device: RobotDevice; token: string }>('robot-device', {
+    tenantId,
+    action: 'create',
+    name,
+  })
+}
+
+export async function rotateRobotDevice(
+  tenantId: string,
+  deviceId: string,
+): Promise<string> {
+  const data = await invokeFunction<{ token: string }>('robot-device', {
+    tenantId,
+    action: 'rotate',
+    deviceId,
+  })
+  return data.token
+}
+
+export async function removeRobotDevice(
+  tenantId: string,
+  deviceId: string,
+): Promise<void> {
+  await invokeFunction('robot-device', { tenantId, action: 'remove', deviceId })
+}
+
+export async function listOutbox(
+  tenantId: string,
+  limit = 50,
+): Promise<WaOutboxMessage[]> {
+  const sb = requireSupabase()
+  const { data, error } = await sb
+    .from('wa_outbox')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []) as WaOutboxMessage[]
+}
+
+export async function enqueueOutbox(input: {
+  tenantId: string
+  to: string
+  body: string
+  mediaUrl?: string | null
+  deviceId?: string | null
+}): Promise<void> {
+  const sb = requireSupabase()
+  const to = input.to.replace(/\D/g, '')
+  const { error } = await sb.from('wa_outbox').insert({
+    tenant_id: input.tenantId,
+    to_phone: to,
+    body: input.body,
+    kind: input.mediaUrl ? 'media' : 'text',
+    media_url: input.mediaUrl ?? null,
+    device_id: input.deviceId ?? null,
+  })
+  if (error) throw error
+}
+
+export async function cancelOutbox(id: string): Promise<void> {
+  const sb = requireSupabase()
+  const { error } = await sb
+    .from('wa_outbox')
+    .update({ status: 'canceled' })
+    .eq('id', id)
+  if (error) throw error
 }

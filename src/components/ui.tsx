@@ -142,6 +142,9 @@ const statusStyles: Record<string, string> = {
   expired: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   revoked: 'bg-red-500/15 text-red-300 border-red-500/30',
   active: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  queued: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+  sending: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  sent: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
 }
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

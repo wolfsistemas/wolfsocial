@@ -1,0 +1,25 @@
+project_id = "rjyaqrbzsmbcxgcqivxa"
+
+# Funcoes publicas (sem JWT): chamadas por navegador/Meta/cron.
+# As demais funcoes continuam exigindo JWT (padrao).
+
+[functions.meta-oauth-callback]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.publish-due]
+verify_jwt = false
+
+[functions.refresh-tokens]
+verify_jwt = false
+
+[functions.data-deletion]
+verify_jwt = false
+
+[functions.robot-pull]
+verify_jwt = false
+
+[functions.robot-ack]
+verify_jwt = false

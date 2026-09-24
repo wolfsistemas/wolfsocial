@@ -238,3 +238,43 @@ supabase functions deploy whatsapp-webhook --project-ref <REF> --use-api --no-ve
 
 supabase secrets set WHATSAPP_VERIFY_TOKEN=<valor> --project-ref <REF>
 ```
+
+## Robo local (WhatsApp Web) - numero proprio
+
+Quando o numero e pessoal/Business (nao oficial) ou quando a Cloud API nao esta
+disponivel, use o robo local. Ele roda na sua maquina (whatsapp-web.js), envia
+pela sessao do WhatsApp Web e **nao expoe porta**: so faz chamadas de saida.
+
+Fluxo (pull-only, fila no Supabase):
+
+1. Na tela **WhatsApp**, crie um **dispositivo** e copie o token (aparece uma vez).
+2. No robo (`wolfzap-local`), preencha o `.env` do backend:
+   ```
+   WOLFSOCIAL_FUNCTIONS_URL=https://<REF>.supabase.co/functions/v1
+   WOLFSOCIAL_ROBOT_TOKEN=<token copiado>
+   WOLFSOCIAL_POLL_MS=15000
+   ```
+3. Conecte o WhatsApp Web (QR) e deixe o robo rodando. Ele busca a fila a cada
+   `WOLFSOCIAL_POLL_MS`, envia e confirma o resultado.
+
+Tabelas e funcoes:
+
+```
+wa_outbox            fila (queued -> sending -> sent/failed/canceled)
+robot_devices        maquinas autorizadas pelo tenant
+robot_device_secrets hash do token (RLS sem policy: so o service role le)
+
+robot-device         (JWT)  listar/criar/rotacionar/remover dispositivos
+robot-pull           (publica, x-robot-token) busca a fila
+robot-ack            (publica, x-robot-token) confirma envio/falha
+```
+
+Notas de seguranca/uso:
+
+- Envie apenas mensagens pontuais e para quem espera receber. Nada de disparo em
+  massa (a fila nao tem recurso de broadcast).
+- O token do dispositivo fica salvo so como hash. Se vazar, gere outro em
+  **Novo token** (o antigo deixa de valer).
+- Midia ainda nao e suportada pela ponte (apenas texto).
+- Mensagens travadas em `sending` por mais de 5 min voltam para `queued`.
+

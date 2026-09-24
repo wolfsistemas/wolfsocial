@@ -214,3 +214,35 @@ export interface WhatsappTemplate {
   language: string
   category?: string
 }
+
+export interface RobotDevice {
+  id: string
+  tenant_id: string
+  name: string
+  status: 'active' | 'disabled'
+  last_seen_at: string | null
+  last_error: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type WaOutboxStatus = 'queued' | 'sending' | 'sent' | 'failed' | 'canceled'
+
+export interface WaOutboxMessage {
+  id: string
+  tenant_id: string
+  device_id: string | null
+  to_phone: string
+  body: string | null
+  kind: 'text' | 'media'
+  media_url: string | null
+  status: WaOutboxStatus
+  attempts: number
+  max_attempts: number
+  last_error: string | null
+  scheduled_at: string
+  claimed_at: string | null
+  sent_at: string | null
+  created_at: string
+  updated_at: string
+}
