@@ -206,9 +206,15 @@ async function createCarouselContainer(
 ): Promise<ContainerResult> {
   const base = graphBase(ctx.authPath)
   const params = baseParams(ctx.accessToken)
+  const items = ctx.items as PublishItem[]
+  if (items.length < 2 || items.length > 10) {
+    throw new Error(
+      `Carrossel exige de 2 a 10 itens (recebido: ${items.length}).`,
+    )
+  }
   const children: string[] = []
 
-  for (const item of ctx.items as PublishItem[]) {
+  for (const item of items) {
     const created = await apiPost(base, `${ctx.igUserId}/media`, {
       ...params,
       is_carousel_item: 'true',

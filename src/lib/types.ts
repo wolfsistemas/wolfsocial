@@ -222,6 +222,8 @@ export interface RobotDevice {
   status: 'active' | 'disabled'
   last_seen_at: string | null
   last_error: string | null
+  alert_phone: string | null
+  notify_enabled: boolean
   created_at: string
   updated_at: string
 }

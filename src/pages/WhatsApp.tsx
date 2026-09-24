@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Bell,
   Bot,
+  Check,
   Copy,
   KeyRound,
   MessageCircle,
@@ -33,6 +35,7 @@ import {
   removeRobotDevice,
   removeWhatsappAccount,
   rotateRobotDevice,
+  updateRobotNotify,
 } from '../lib/api'
 import { useSession } from '../lib/session'
 import { supabaseUrl } from '../lib/supabase'
@@ -46,6 +49,9 @@ import type {
 
 export default function WhatsApp() {
   const { tenant } = useSession()
+  // API oficial (Meta Cloud API) oculta por enquanto: o envio/avisos saem pelo
+  // robo local (WhatsApp Web). Mude para true se for configurar a conta Meta.
+  const SHOW_META_API = false
   const [account, setAccount] = useState<WhatsappAccount | null>(null)
   const [messages, setMessages] = useState<WhatsappMessage[]>([])
   const [templates, setTemplates] = useState<WhatsappTemplate[]>([])
@@ -65,6 +71,8 @@ export default function WhatsApp() {
   const [outbox, setOutbox] = useState<WaOutboxMessage[]>([])
   const [newDeviceName, setNewDeviceName] = useState('')
   const [deviceToken, setDeviceToken] = useState('')
+  const [deviceAlertPhone, setDeviceAlertPhone] = useState('')
+  const [deviceNotify, setDeviceNotify] = useState(false)
   const [queueTo, setQueueTo] = useState('')
   const [queueText, setQueueText] = useState('Mensagem de teste pelo robo local.')
 
@@ -89,6 +97,8 @@ export default function WhatsApp() {
       setAccount(accounts[0] ?? null)
       setMessages(msgs)
       setDevices(devs)
+      setDeviceAlertPhone(devs[0]?.alert_phone ?? '')
+      setDeviceNotify(devs[0]?.notify_enabled ?? false)
       setOutbox(queue)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao carregar WhatsApp')
@@ -204,6 +214,14 @@ export default function WhatsApp() {
     void run(() => cancelOutbox(id), 'Item cancelado.')
   }
 
+  function saveRobotNotify() {
+    if (!tenant) return
+    void run(
+      () => updateRobotNotify(tenant.id, deviceAlertPhone, deviceNotify),
+      'Avisos do robo salvos.',
+    )
+  }
+
   function copyToken() {
     void navigator.clipboard?.writeText(deviceToken)
     setNotice('Token copiado.')
@@ -213,9 +231,11 @@ export default function WhatsApp() {
     <div>
       <PageHeader
         title="WhatsApp"
-        description="Numero oficial (Cloud API) para envios e avisos, ou o robo local (WhatsApp Web) para o seu numero."
+        description="Robo local (WhatsApp Web): envie e receba avisos pelo seu proprio numero."
       />
 
+      {SHOW_META_API ? (
+        <>
       <Card className="mb-5">
         <div className="mb-2 flex items-center gap-2">
           <ShieldCheck size={16} className="text-emerald-300" />
@@ -369,6 +389,8 @@ export default function WhatsApp() {
           ) : null}
         </Card>
       ) : null}
+        </>
+      ) : null}
 
       <Card className="mb-5">
         <div className="mb-2 flex items-center gap-2">
@@ -383,6 +405,41 @@ export default function WhatsApp() {
           robo busca (sem expor porta). Use apenas para uso proprio e com
           mensagens pontuais.
         </p>
+
+        <div className="mb-4 rounded-lg border border-white/10 bg-black/20 p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Bell size={16} className="text-violet-300" />
+            <p className="text-sm font-medium text-slate-200">
+              Avisos de publicacao
+            </p>
+          </div>
+          <p className="mb-3 text-xs text-slate-500">
+            Receba no WhatsApp um aviso sempre que um post agendado for
+            publicado (ou falhar).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <Field label="Telefone para avisos (DDI+DDD+numero)">
+              <Input
+                value={deviceAlertPhone}
+                onChange={(e) => setDeviceAlertPhone(e.target.value)}
+                placeholder="5562999999999"
+              />
+            </Field>
+            <Button disabled={busy} onClick={saveRobotNotify}>
+              <Check size={16} />
+              Salvar
+            </Button>
+          </div>
+          <label className="mt-3 flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={deviceNotify}
+              onChange={(e) => setDeviceNotify(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-black/30"
+            />
+            Ativar avisos por WhatsApp
+          </label>
+        </div>
 
         {deviceToken ? (
           <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
@@ -526,6 +583,7 @@ export default function WhatsApp() {
         </div>
       </Card>
 
+      {SHOW_META_API ? (
       <Card>
         <p className="mb-3 text-sm font-medium text-slate-200">
           Mensagens recentes
@@ -566,6 +624,7 @@ export default function WhatsApp() {
           </div>
         )}
       </Card>
+      ) : null}
 
       {error ? (
         <div className="mt-4">

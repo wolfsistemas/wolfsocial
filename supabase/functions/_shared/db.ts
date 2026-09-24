@@ -84,6 +84,46 @@ export async function notify(
   }
 
   await forwardToWhatsapp(tenantId, level, title, message)
+  await forwardToRobot(tenantId, level, title, message)
+}
+
+// Sends the notification through the tenant's local robot (WhatsApp Web):
+// queues a text into `wa_outbox` for the most recently seen active device that
+// has alerts enabled. The robot pulls and sends it. Best effort, never throws.
+async function forwardToRobot(
+  tenantId: string,
+  level: string,
+  title: string,
+  message?: string,
+): Promise<void> {
+  try {
+    const sb = adminClient()
+    const { data: device } = await sb
+      .from('robot_devices')
+      .select('id, alert_phone')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active')
+      .eq('notify_enabled', true)
+      .not('alert_phone', 'is', null)
+      .order('last_seen_at', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+    const toPhone = (device?.alert_phone as string | null)?.replace(/\D/g, '')
+    if (!device?.id || !toPhone) return
+
+    const text = `[${level}] ${title}${message ? `\n${message}` : ''}`
+    await sb.from('wa_outbox').insert({
+      tenant_id: tenantId,
+      device_id: device.id,
+      to_phone: toPhone,
+      body: text,
+      kind: 'text',
+      source: 'wolfsocial',
+      status: 'queued',
+    })
+  } catch {
+    // notifications must never break the caller
+  }
 }
 
 // Sends the notification to the tenant's WhatsApp alert number, when the

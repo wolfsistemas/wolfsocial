@@ -68,9 +68,11 @@ export async function listAccounts(tenantId: string): Promise<SocialAccount[]> {
 
 export async function disconnectAccount(id: string): Promise<void> {
   const sb = requireSupabase()
+  // access_token_enc is NOT NULL and status only accepts connected/expired/
+  // revoked/error, so we revoke instead of nulling the token.
   const { error } = await sb
     .from('social_accounts')
-    .update({ status: 'disconnected', access_token_enc: null })
+    .update({ status: 'revoked', last_error: null })
     .eq('id', id)
   if (error) throw error
 }
@@ -433,7 +435,19 @@ export async function invokeFunction<T = unknown>(
 ): Promise<T> {
   const sb = requireSupabase()
   const { data, error } = await sb.functions.invoke(name, { body })
-  if (error) throw error
+  if (error) {
+    let message = error.message
+    const res = (error as { context?: Response }).context
+    if (res && typeof res.json === 'function') {
+      try {
+        const parsed = (await res.clone().json()) as { error?: string }
+        if (parsed && typeof parsed.error === 'string') message = parsed.error
+      } catch {
+        // mantem a mensagem generica
+      }
+    }
+    throw new Error(message)
+  }
   return data as T
 }
 
@@ -812,6 +826,19 @@ export async function removeRobotDevice(
   deviceId: string,
 ): Promise<void> {
   await invokeFunction('robot-device', { tenantId, action: 'remove', deviceId })
+}
+
+export async function updateRobotNotify(
+  tenantId: string,
+  alertPhone: string,
+  notifyEnabled: boolean,
+): Promise<void> {
+  await invokeFunction('robot-device', {
+    tenantId,
+    action: 'settings',
+    alertPhone,
+    notifyEnabled,
+  })
 }
 
 export async function listOutbox(

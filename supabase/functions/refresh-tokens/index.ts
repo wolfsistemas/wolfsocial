@@ -45,11 +45,16 @@ Deno.serve(async (req) => {
         .eq('id', account.id)
       refreshed += 1
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha no refresh'
+      // Erros de rede/servidor nao devem desabilitar a conta permanentemente.
+      const invalidToken = /190|OAuthException|invalid|expired|revoked/i.test(
+        message,
+      )
       await sb
         .from('social_accounts')
         .update({
-          status: 'error',
-          last_error: err instanceof Error ? err.message : 'Falha no refresh',
+          status: invalidToken ? 'error' : 'connected',
+          last_error: message,
         })
         .eq('id', account.id)
     }

@@ -15,6 +15,9 @@ verify_jwt = false
 [functions.refresh-tokens]
 verify_jwt = false
 
+[functions.fetch-insights]
+verify_jwt = false
+
 [functions.data-deletion]
 verify_jwt = false
 

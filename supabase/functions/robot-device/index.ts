@@ -9,7 +9,7 @@ function randomToken(bytes = 32): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-const DEVICE_COLUMNS = 'id, tenant_id, name, status, last_seen_at, last_error, created_at, updated_at'
+const DEVICE_COLUMNS = 'id, tenant_id, name, status, last_seen_at, last_error, alert_phone, notify_enabled, created_at, updated_at'
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
@@ -53,7 +53,6 @@ Deno.serve(async (req) => {
         .insert({
           tenant_id: tenantId,
           name,
-          created_by: userId,
         })
         .select(DEVICE_COLUMNS)
         .single()
@@ -66,6 +65,27 @@ Deno.serve(async (req) => {
         throw secretErr
       }
       return json({ device, token })
+    }
+
+    // Alert settings for the whole tenant (applied to every device; the
+    // notifier picks the most recently seen active device).
+    if (action === 'settings') {
+      const alertPhone = String(body.alertPhone ?? '').replace(/\D/g, '')
+      const notifyEnabled =
+        body.notifyEnabled === true || body.notifyEnabled === 'true'
+      const { error } = await sb
+        .from('robot_devices')
+        .update({
+          alert_phone: alertPhone || null,
+          notify_enabled: notifyEnabled,
+        })
+        .eq('tenant_id', tenantId)
+      if (error) throw error
+      return json({
+        ok: true,
+        alert_phone: alertPhone || null,
+        notify_enabled: notifyEnabled,
+      })
     }
 
     const deviceId = body.deviceId as string | undefined

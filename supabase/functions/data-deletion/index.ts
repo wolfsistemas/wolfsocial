@@ -18,21 +18,21 @@ async function parseSignedRequest(
 ): Promise<Record<string, unknown> | null> {
   const [sigPart, payloadPart] = signed.split('.')
   if (!sigPart || !payloadPart) return null
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['verify'],
-  )
-  const valid = await crypto.subtle.verify(
-    'HMAC',
-    key,
-    base64UrlToBytes(sigPart),
-    encoder.encode(payloadPart),
-  )
-  if (!valid) return null
   try {
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify'],
+    )
+    const valid = await crypto.subtle.verify(
+      'HMAC',
+      key,
+      base64UrlToBytes(sigPart),
+      encoder.encode(payloadPart),
+    )
+    if (!valid) return null
     return JSON.parse(new TextDecoder().decode(base64UrlToBytes(payloadPart)))
   } catch {
     return null

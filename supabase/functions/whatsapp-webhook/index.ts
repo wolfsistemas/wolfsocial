@@ -59,14 +59,16 @@ Deno.serve(async (req) => {
   const raw = await req.text()
 
   const appSecret = Deno.env.get('META_APP_SECRET')
-  if (appSecret) {
-    const valid = await verifyWebhookSignature(
-      appSecret,
-      raw,
-      req.headers.get('x-hub-signature-256'),
-    )
-    if (!valid) return new Response('Invalid signature', { status: 401 })
+  if (!appSecret) {
+    console.error('whatsapp-webhook: META_APP_SECRET ausente; recusando POST.')
+    return new Response('Server misconfigured', { status: 500 })
   }
+  const valid = await verifyWebhookSignature(
+    appSecret,
+    raw,
+    req.headers.get('x-hub-signature-256'),
+  )
+  if (!valid) return new Response('Invalid signature', { status: 401 })
 
   let payload: { entry?: { changes?: { value?: WaValue }[] }[] }
   try {
@@ -114,12 +116,13 @@ Deno.serve(async (req) => {
       if (!tenantId) continue
 
       for (const message of value.messages ?? []) {
+        if (!message.id) continue
         const body = inboundBody(message)
         await sb.from('whatsapp_messages').upsert(
           {
             tenant_id: tenantId,
             account_id: accountId,
-            meta_message_id: message.id ?? null,
+            meta_message_id: message.id,
             direction: 'in',
             wa_from: message.from ?? null,
             kind: message.type ?? 'text',
@@ -142,11 +145,13 @@ Deno.serve(async (req) => {
               ? [error.title, error.message].filter(Boolean).join(' | ')
               : null,
           })
+          .eq('tenant_id', tenantId)
           .eq('meta_message_id', status.id)
       }
     }
-  } catch {
-    // Meta only needs a 200 to stop retrying; failures are best effort.
+  } catch (err) {
+    // Meta only needs a 200 to stop retrying, but log so failures are visible.
+    console.error('whatsapp-webhook: falha ao processar evento', err)
   }
 
   return new Response('EVENT_RECEIVED', { status: 200 })

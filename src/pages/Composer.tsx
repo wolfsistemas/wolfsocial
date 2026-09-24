@@ -217,6 +217,10 @@ export default function Composer() {
     setSelected([])
     setCoverAssetId('')
     setThumbOffsetSec('')
+    if (!kindRules[next].caption) {
+      setCaption('')
+      setHashtags('')
+    }
   }
 
   async function applyCrop(file: File, presetLabel: string) {
@@ -248,9 +252,15 @@ export default function Composer() {
     setSelectedTemplate(id)
     const tpl = templates.find((t) => t.id === id)
     if (!tpl) return
-    setCaption(tpl.body)
-    setHashtags(tpl.hashtags)
-    if (tpl.kind) setKind(tpl.kind)
+    const nextKind = tpl.kind ?? kind
+    if (tpl.kind) changeKind(tpl.kind)
+    if (kindRules[nextKind].caption) {
+      setCaption(tpl.body)
+      setHashtags(tpl.hashtags)
+    } else {
+      setCaption('')
+      setHashtags('')
+    }
   }
 
   async function saveTemplate() {
@@ -335,7 +345,7 @@ export default function Composer() {
         tenantId: tenant.id,
         accountId,
         kind,
-        caption: fullCaption,
+        caption: kindRules[kind].caption ? fullCaption : '',
         mediaIds: selected,
         scheduledAt: scheduledIso,
         status: mode === 'draft' ? ('draft' as const) : ('scheduled' as const),

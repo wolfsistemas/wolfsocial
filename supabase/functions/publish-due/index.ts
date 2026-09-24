@@ -16,33 +16,51 @@ Deno.serve(async (req) => {
 
   const sb = adminClient()
   const now = Date.now()
+  const nowIso = new Date(now).toISOString()
 
   const { data: due } = await sb
     .from('posts')
-    .select('id')
+    .select('id, status, updated_at')
     .eq('status', 'scheduled')
-    .lte('scheduled_at', new Date(now).toISOString())
+    .lte('scheduled_at', nowIso)
     .order('scheduled_at', { ascending: true })
     .limit(5)
 
   const staleCutoff = new Date(now - 2 * 60_000).toISOString()
   const { data: resumable } = await sb
     .from('posts')
-    .select('id')
+    .select('id, status, updated_at')
     .eq('status', 'publishing')
-    .not('ig_container_id', 'is', null)
     .lt('updated_at', staleCutoff)
     .limit(5)
 
-  const ids = [
-    ...new Set([
-      ...(due ?? []).map((p) => p.id as string),
-      ...(resumable ?? []).map((p) => p.id as string),
-    ]),
-  ]
+  const candidates = new Map<string, string>()
+  for (const post of due ?? []) {
+    candidates.set(post.id as string, post.updated_at as string)
+  }
+  for (const post of resumable ?? []) {
+    if (!candidates.has(post.id as string)) {
+      candidates.set(post.id as string, post.updated_at as string)
+    }
+  }
 
   const results: Array<{ id: string; ok: boolean }> = []
-  for (const id of ids) {
+  for (const [id, previousUpdatedAt] of candidates) {
+    // Atomic claim: only the worker that moves updated_at from its observed
+    // value may process the post. Prevents overlapping cron runs from
+    // publishing the same post twice.
+    const { data: claimed } = await sb
+      .from('posts')
+      .update({ status: 'publishing', updated_at: nowIso })
+      .eq('id', id)
+      .eq('updated_at', previousUpdatedAt)
+      .select('id')
+      .maybeSingle()
+    if (!claimed) {
+      results.push({ id, ok: false })
+      continue
+    }
+
     try {
       await processPost(id)
       results.push({ id, ok: true })

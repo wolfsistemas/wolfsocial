@@ -66,14 +66,15 @@ export async function processPost(postId: string): Promise<void> {
 
     const result = await runPublish(ctx)
 
+    const completedAt = result.done ? new Date().toISOString() : null
     await sb
       .from('posts')
       .update({
         status: result.done ? 'published' : 'publishing',
         ig_container_id: result.containerId,
         ig_media_id: result.mediaId ?? post.ig_media_id,
-        published_at: result.done ? new Date().toISOString() : null,
         last_error: null,
+        ...(completedAt ? { published_at: completedAt } : {}),
         attempts: post.attempts + (result.done ? 1 : 0),
       })
       .eq('id', post.id)
@@ -98,6 +99,13 @@ export async function processPost(postId: string): Promise<void> {
         'warn',
         'Post publicado com aviso',
         result.warning,
+      )
+    } else if (result.done) {
+      await notify(
+        post.tenant_id,
+        'info',
+        'Post publicado',
+        `Seu post (${post.kind}) foi publicado com sucesso.`,
       )
     }
   } catch (err) {

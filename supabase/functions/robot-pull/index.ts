@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
       .select('id, attempts, max_attempts')
       .eq('tenant_id', device.tenant_id)
       .eq('status', 'queued')
+      .or(`device_id.is.null,device_id.eq.${device.id}`)
       .lte('scheduled_at', now.toISOString())
       .order('scheduled_at', { ascending: true })
       .limit(CLAIM_LIMIT)

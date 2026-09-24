@@ -68,20 +68,33 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       return
     }
     let active = true
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return
-      setSession(data.session)
-      if (data.session) void loadTenant()
-      setLoading(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next)
-      if (next) {
-        void loadTenant()
-      } else {
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return
+        setSession(data.session)
+        if (data.session) void loadTenant()
+      })
+      .catch(() => {
+        if (!active) return
+        setSession(null)
         setTenants([])
         setActiveId(null)
-      }
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next)
+      // Defer async work: onAuthStateChange runs inside the GoTrue lock.
+      setTimeout(() => {
+        if (next) {
+          void loadTenant()
+        } else {
+          setTenants([])
+          setActiveId(null)
+        }
+      }, 0)
     })
     return () => {
       active = false

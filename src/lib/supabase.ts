@@ -10,7 +10,9 @@ export const supabase: SupabaseClient | null = isConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        // OAuth is completed server-side (meta-oauth-callback); disabling this
+        // avoids GoTrue consuming the app's own ?code= query in DataDeletion.
+        detectSessionInUrl: false,
       },
     })
   : null
