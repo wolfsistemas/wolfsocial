@@ -186,6 +186,36 @@ mexer. Se seguir o **Caminho B** (app novo), me informe para eu configurar.
   `WHATSAPP_NOTIFY_TEMPLATE` (ex.: template de utilidade com 2 variaveis:
   titulo e mensagem) para os avisos de publicacao.
 
+## Problemas comuns
+
+### Erro 130497 - "Business account is restricted from messaging users in this country"
+
+A Meta aceita o envio (status `accepted`), mas o status logo depois e `failed`
+com o codigo `130497`. Isso e uma **restricao de mensagem entre paises**:
+o numero de teste americano (**+1**) nao entrega para destinatarios no Brasil.
+Nao e bug do WolfSocial.
+
+- **Receber do Brasil funciona**: o webhook recebe normalmente a mensagem que o
+  usuario brasileiro manda para o numero.
+- **Enviar para o Brasil nao funciona** com numero de teste dos EUA.
+
+Como resolver:
+
+1. **Recomendado**: registrar um **numero brasileiro** de producao (Etapa 2) e
+   completar a **verificacao da empresa** (Etapa 3). Um numero local entrega
+   local.
+2. Preencher o **perfil/endereco** do numero no WhatsApp Manager
+   (Phone numbers > perfil/Profile).
+3. Alternativa temporaria para validar a integracao: testar envio para um
+   destinatario em pais permitido (ex.: EUA).
+4. Mensagens entre paises podem liberar apenas com escala da conta
+   (limite alto, ~100 mil conversas/24h) e boa qualidade - nao e garantido.
+
+### Erro 132000 - "Number of parameters does not match"
+
+O template espera uma quantidade diferente de variaveis. Ajuste os
+`components`/`parameters` para bater com o template aprovado.
+
 ## Secrets usados
 
 ```
