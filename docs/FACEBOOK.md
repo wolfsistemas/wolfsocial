@@ -108,7 +108,41 @@ caminho Facebook fica reservado para Paginas, Portfolio e anuncios.
 
 ---
 
-## 6. Como testar
+## 6. Niveis de acesso: testador vs Acesso Avancado
+
+Hoje as permissoes do app estao em **Acesso Padrao**. Isso define **quem**
+consegue conectar:
+
+| Permissao | Acesso Padrao (hoje) | Acesso Avancado (producao) |
+| --- | --- | --- |
+| `instagram_business_basic` | Admin/desenvolvedor/testador do app | Qualquer usuario |
+| `instagram_business_content_publish` | Admin/desenvolvedor/testador do app | Qualquer usuario |
+| `pages_show_list`, `pages_read_engagement` | Admin/desenvolvedor/testador do app | Qualquer usuario |
+
+- **Para voce e sua equipe (ate ~25 pessoas):** adicione cada um como
+  **Testador do Instagram** em **Funcoes do app > Testadores do Instagram** e
+  aceite o convite no app do Instagram. Conecta **sem** App Review.
+- **Para clientes externos (qualquer usuario):** e preciso **Acesso Avancado**,
+  obtido via **App Review** de cada permissao. O App Review exige
+  **Verificacao de Empresa (CNPJ)** concluida no Business Manager, justificativa
+  de uso, screencast do fluxo e link da politica de privacidade.
+
+Observacao: sem **Verificacao de Empresa** nao ha Acesso Avancado. Portanto o
+onboarding de clientes externos (Instagram e WhatsApp/Embedded Signup) fica
+bloqueado ate essa verificacao ser feita.
+
+### Como retomar quando o CNPJ estiver pronto
+
+1. Business Manager: concluir **Verificacao de Empresa**.
+2. Developer: submeter **App Review** de `instagram_business_basic` e
+   `instagram_business_content_publish` (+ `..._manage_comments` /
+   `..._manage_insights` se usados).
+3. Aprovado o Acesso Avancado, qualquer usuario ja consegue conectar pelo
+   fluxo atual (nenhuma mudanca de codigo e necessaria).
+
+---
+
+## 7. Como testar
 
 1. Em **Contas**, clique em **Conectar via Facebook**.
 2. Selecione a Pagina quando a Meta pedir.
@@ -118,7 +152,7 @@ caminho Facebook fica reservado para Paginas, Portfolio e anuncios.
 
 ---
 
-## 7. Anuncios (etapa futura)
+## 8. Anuncios (etapa futura)
 
 A integracao real com trafego pago exige:
 
@@ -132,10 +166,12 @@ apenas exibe o que estiver registrado ate essa fase.
 
 ---
 
-## 8. Checklist rapido
+## 9. Checklist rapido
 
 - [ ] Configuracao de Login for Business criada e `config_id` copiado
 - [ ] URI de redirecionamento cadastrada
 - [ ] `META_FB_LOGIN_CONFIG_ID` definido nos secrets
 - [ ] Funcoes de login re-deployadas
 - [ ] Conexao "Conectar via Facebook" testada e coexistindo com a do Instagram
+- [ ] (Producao) Verificacao de Empresa concluida
+- [ ] (Producao) App Review das permissoes com Acesso Avancado aprovado

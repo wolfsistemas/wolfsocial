@@ -91,6 +91,12 @@ O app e do tipo **Business** e usa dois produtos:
 6. **Teste:** em **Contas**, clique em *Conectar via Instagram*. Autorize. O app
    deve voltar com "Conta conectada com sucesso".
 
+> **Niveis de acesso (quem consegue conectar):** com as permissoes em **Acesso
+> Padrao**, so conectam admin/desenvolvedor e quem estiver cadastrado como
+> **Testador do Instagram** (limite ~25). Para **clientes externos** conectar,
+> e preciso **Acesso Avancado** via **App Review**, que exige **Verificacao de
+> Empresa (CNPJ)**. Detalhes e como retomar em `docs/FACEBOOK.md`, secao 6.
+
 ---
 
 ## Etapa 4 - Publicar as primeiras imagens
