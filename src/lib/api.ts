@@ -832,12 +832,14 @@ export async function updateRobotNotify(
   tenantId: string,
   alertPhone: string,
   notifyEnabled: boolean,
+  notifyOnlyFailures: boolean,
 ): Promise<void> {
   await invokeFunction('robot-device', {
     tenantId,
     action: 'settings',
     alertPhone,
     notifyEnabled,
+    notifyOnlyFailures,
   })
 }
 

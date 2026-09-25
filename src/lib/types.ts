@@ -224,6 +224,7 @@ export interface RobotDevice {
   last_error: string | null
   alert_phone: string | null
   notify_enabled: boolean
+  notify_only_failures: boolean
   created_at: string
   updated_at: string
 }

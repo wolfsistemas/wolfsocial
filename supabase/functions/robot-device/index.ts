@@ -9,7 +9,7 @@ function randomToken(bytes = 32): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-const DEVICE_COLUMNS = 'id, tenant_id, name, status, last_seen_at, last_error, alert_phone, notify_enabled, created_at, updated_at'
+const DEVICE_COLUMNS = 'id, tenant_id, name, status, last_seen_at, last_error, alert_phone, notify_enabled, notify_only_failures, created_at, updated_at'
 
 Deno.serve(async (req) => {
   const preflight = handleOptions(req)
@@ -73,11 +73,14 @@ Deno.serve(async (req) => {
       const alertPhone = String(body.alertPhone ?? '').replace(/\D/g, '')
       const notifyEnabled =
         body.notifyEnabled === true || body.notifyEnabled === 'true'
+      const notifyOnlyFailures =
+        body.notifyOnlyFailures === true || body.notifyOnlyFailures === 'true'
       const { error } = await sb
         .from('robot_devices')
         .update({
           alert_phone: alertPhone || null,
           notify_enabled: notifyEnabled,
+          notify_only_failures: notifyOnlyFailures,
         })
         .eq('tenant_id', tenantId)
       if (error) throw error
@@ -85,6 +88,7 @@ Deno.serve(async (req) => {
         ok: true,
         alert_phone: alertPhone || null,
         notify_enabled: notifyEnabled,
+        notify_only_failures: notifyOnlyFailures,
       })
     }
 

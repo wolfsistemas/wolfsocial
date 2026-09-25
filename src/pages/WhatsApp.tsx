@@ -73,6 +73,7 @@ export default function WhatsApp() {
   const [deviceToken, setDeviceToken] = useState('')
   const [deviceAlertPhone, setDeviceAlertPhone] = useState('')
   const [deviceNotify, setDeviceNotify] = useState(false)
+  const [deviceNotifyOnlyFailures, setDeviceNotifyOnlyFailures] = useState(false)
   const [queueTo, setQueueTo] = useState('')
   const [queueText, setQueueText] = useState('Mensagem de teste pelo robo local.')
 
@@ -99,6 +100,7 @@ export default function WhatsApp() {
       setDevices(devs)
       setDeviceAlertPhone(devs[0]?.alert_phone ?? '')
       setDeviceNotify(devs[0]?.notify_enabled ?? false)
+      setDeviceNotifyOnlyFailures(devs[0]?.notify_only_failures ?? false)
       setOutbox(queue)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Falha ao carregar WhatsApp')
@@ -217,7 +219,13 @@ export default function WhatsApp() {
   function saveRobotNotify() {
     if (!tenant) return
     void run(
-      () => updateRobotNotify(tenant.id, deviceAlertPhone, deviceNotify),
+      () =>
+        updateRobotNotify(
+          tenant.id,
+          deviceAlertPhone,
+          deviceNotify,
+          deviceNotifyOnlyFailures,
+        ),
       'Avisos do robo salvos.',
     )
   }
@@ -438,6 +446,15 @@ export default function WhatsApp() {
               className="h-4 w-4 rounded border-white/20 bg-black/30"
             />
             Ativar avisos por WhatsApp
+          </label>
+          <label className="mt-2 flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={deviceNotifyOnlyFailures}
+              onChange={(e) => setDeviceNotifyOnlyFailures(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-black/30"
+            />
+            Avisar somente quando falhar
           </label>
         </div>
 

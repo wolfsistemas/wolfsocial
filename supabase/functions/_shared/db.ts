@@ -100,7 +100,7 @@ async function forwardToRobot(
     const sb = adminClient()
     const { data: device } = await sb
       .from('robot_devices')
-      .select('id, alert_phone')
+      .select('id, alert_phone, notify_only_failures')
       .eq('tenant_id', tenantId)
       .eq('status', 'active')
       .eq('notify_enabled', true)
@@ -110,6 +110,7 @@ async function forwardToRobot(
       .maybeSingle()
     const toPhone = (device?.alert_phone as string | null)?.replace(/\D/g, '')
     if (!device?.id || !toPhone) return
+    if (device.notify_only_failures && level === 'info') return
 
     const text = `[${level}] ${title}${message ? `\n${message}` : ''}`
     await sb.from('wa_outbox').insert({

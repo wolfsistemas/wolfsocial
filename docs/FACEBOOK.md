@@ -131,6 +131,34 @@ Observacao: sem **Verificacao de Empresa** nao ha Acesso Avancado. Portanto o
 onboarding de clientes externos (Instagram e WhatsApp/Embedded Signup) fica
 bloqueado ate essa verificacao ser feita.
 
+### Passo a passo: liberar amigos como testadores
+
+Cada pessoa precisa de uma conta **Instagram profissional** (Business ou
+Creator). O papel de testador e no app da Meta; cada pessoa cria o proprio
+tenant no WolfSocial separadamente.
+
+1. Pecam o `@usuario` do Instagram de cada pessoa.
+2. No app em https://developers.facebook.com/apps, abra **Funcoes do app
+   (App roles)** > **Testadores do Instagram (Instagram testers)** >
+   **Adicionar pessoas** e informe o `@usuario`.
+3. A pessoa aceita o convite **dentro do app do Instagram**, em
+   **Configuracoes > Apps e sites > Convites de testador > Aceitar** (logada na
+   conta correta).
+4. A pessoa cria a conta no WolfSocial e conecta em
+   **Contas > Conectar via Instagram**.
+5. (Opcional, so se for usar o caminho Facebook/Anuncios) adicione tambem como
+   **Testador** em **Funcoes do app > Funcoes (Roles) > Testadores**; o convite
+   e aceito em https://developers.facebook.com/requests/.
+
+Observacoes:
+
+- Limite de cerca de 25 testadores por app. Para trocar, remova a pessoa e
+  convide novamente.
+- O acesso de testador vale enquanto o app estiver em **Desenvolvimento** (ou
+  Live, mas sem Acesso Avancado so quem tem funcao consegue conectar).
+- Amigos = testadores (Nivel 1). Clientes externos exigem Acesso Avancado
+  (Nivel 2), que depende da Verificacao de Empresa.
+
 ### Como retomar quando o CNPJ estiver pronto
 
 1. Business Manager: concluir **Verificacao de Empresa**.
